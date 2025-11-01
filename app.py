@@ -1,42 +1,196 @@
-"""
-Advanced SMART STUDENT MANAGEMENT SYSTEM
-Made By: Hafiz Mustafa Murtaza
-
-A production-ready student management application built with Streamlit.
-Uses only functional programming (no OOP) and file-based persistence.
-"""
-
 import streamlit as st
 import pandas as pd
 import os
 from typing import List, Dict, Optional, Tuple
-import re
-
-# ============================================================================
-# CONFIGURATION & CONSTANTS
-# ============================================================================
+import plotly.express as px
+import plotly.graph_objects as go
+from datetime import datetime
+import numpy as np
 
 DATA_FILE = "students.txt"
-VALID_GRADES = ["A", "B", "C", "D", "F"]
+VALID_GRADES = ["A+", "A", "B+", "B", "C+", "C", "D", "F"]
 
-# ============================================================================
-# I. BACKEND LOGIC - FILE HANDLING FUNCTIONS
-# ============================================================================
+st.set_page_config(
+    page_title="AI-Powered Student Management",
+    page_icon="🎓",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+def inject_custom_css():
+    st.markdown("""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .main {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+        }
+        
+        .stApp {
+            background: transparent;
+        }
+        
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #1e3c72 0%, #2a5298 100%);
+        }
+        
+        [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+            color: white;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            margin: 20px 0;
+        }
+        
+        .stButton>button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 15px 30px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .stButton>button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .stTextInput>div>div>input, .stNumberInput>div>div>input {
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            padding: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .stSelectbox>div>div>div {
+            border-radius: 10px;
+        }
+        
+        h1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            font-size: 3.5rem !important;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h2, h3 {
+            color: #2d3748;
+            font-weight: 700;
+        }
+        
+        .stMetric {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stMetric label {
+            color: #667eea !important;
+            font-weight: 600 !important;
+        }
+        
+        .stMetric [data-testid="stMetricValue"] {
+            color: #2d3748;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        
+        [data-testid="stExpander"] {
+            background: white;
+            border-radius: 15px;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .stDataFrame {
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .ai-badge {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        .success-animation {
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 10px;
+            background: transparent;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            background: white;
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-weight: 600;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        </style>
+    """, unsafe_allow_html=True)
 
 def load_students() -> List[Dict]:
-    """
-    Load all student records from the data file.
-    
-    Returns:
-        List of student dictionaries. Empty list if file doesn't exist or is empty.
-    
-    Handles:
-        - FileNotFoundError: Creates empty list
-        - Corrupted data: Skips invalid lines and logs warnings
-    """
     students = []
-    
-    # Create file if it doesn't exist
     if not os.path.exists(DATA_FILE):
         with open(DATA_FILE, 'w') as f:
             pass
@@ -48,13 +202,12 @@ def load_students() -> List[Dict]:
             
         for line_num, line in enumerate(lines, 1):
             line = line.strip()
-            if not line:  # Skip empty lines
+            if not line:
                 continue
                 
             try:
                 parts = line.split(',')
                 if len(parts) != 5:
-                    st.warning(f"Skipping corrupted line {line_num}: Invalid format")
                     continue
                 
                 student = {
@@ -66,8 +219,7 @@ def load_students() -> List[Dict]:
                 }
                 students.append(student)
                 
-            except (ValueError, IndexError) as e:
-                st.warning(f"Skipping corrupted line {line_num}: {str(e)}")
+            except (ValueError, IndexError):
                 continue
                 
     except Exception as e:
@@ -75,17 +227,7 @@ def load_students() -> List[Dict]:
         
     return students
 
-
 def save_students(students: List[Dict]) -> bool:
-    """
-    Save all student records to the data file (overwrites existing content).
-    
-    Args:
-        students: List of student dictionaries
-        
-    Returns:
-        True if successful, False otherwise
-    """
     try:
         with open(DATA_FILE, 'w') as f:
             for student in students:
@@ -96,44 +238,17 @@ def save_students(students: List[Dict]) -> bool:
         st.error(f"Error saving students: {str(e)}")
         return False
 
-
-# ============================================================================
-# II. VALIDATION HELPER FUNCTIONS
-# ============================================================================
-
 def validate_id(student_id: int, existing_students: List[Dict], updating_id: Optional[int] = None) -> Tuple[bool, str]:
-    """
-    Validate student ID.
-    
-    Args:
-        student_id: The ID to validate
-        existing_students: List of existing student records
-        updating_id: If updating, the current ID (to allow keeping same ID)
-        
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
     if not isinstance(student_id, int) or student_id <= 0:
         return False, "ID must be a positive integer"
     
-    # Check uniqueness (skip if updating the same student)
     for student in existing_students:
         if student['id'] == student_id and student_id != updating_id:
             return False, f"ID {student_id} already exists"
     
     return True, ""
 
-
 def validate_name(name: str) -> Tuple[bool, str]:
-    """
-    Validate student name.
-    
-    Args:
-        name: The name to validate
-        
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
     if not name or not name.strip():
         return False, "Name cannot be empty"
     
@@ -145,17 +260,7 @@ def validate_name(name: str) -> Tuple[bool, str]:
     
     return True, ""
 
-
 def validate_age(age: int) -> Tuple[bool, str]:
-    """
-    Validate student age.
-    
-    Args:
-        age: The age to validate
-        
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
     if not isinstance(age, int):
         return False, "Age must be an integer"
     
@@ -164,17 +269,7 @@ def validate_age(age: int) -> Tuple[bool, str]:
     
     return True, ""
 
-
 def validate_grade(grade: str) -> Tuple[bool, str]:
-    """
-    Validate student grade.
-    
-    Args:
-        grade: The grade to validate
-        
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
     if not grade:
         return False, "Grade cannot be empty"
     
@@ -183,17 +278,7 @@ def validate_grade(grade: str) -> Tuple[bool, str]:
     
     return True, ""
 
-
 def validate_marks(marks: int) -> Tuple[bool, str]:
-    """
-    Validate student marks.
-    
-    Args:
-        marks: The marks to validate
-        
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
     if not isinstance(marks, int):
         return False, "Marks must be an integer"
     
@@ -202,22 +287,9 @@ def validate_marks(marks: int) -> Tuple[bool, str]:
     
     return True, ""
 
-
 def validate_student_data(student_data: Dict, existing_students: List[Dict], updating_id: Optional[int] = None) -> Tuple[bool, List[str]]:
-    """
-    Validate all student data fields.
-    
-    Args:
-        student_data: Dictionary containing student information
-        existing_students: List of existing students
-        updating_id: If updating, the current student ID
-        
-    Returns:
-        Tuple of (is_valid, list_of_error_messages)
-    """
     errors = []
     
-    # Validate each field
     is_valid, error = validate_id(student_data['id'], existing_students, updating_id)
     if not is_valid:
         errors.append(error)
@@ -240,53 +312,24 @@ def validate_student_data(student_data: Dict, existing_students: List[Dict], upd
     
     return len(errors) == 0, errors
 
-
-# ============================================================================
-# III. CRUD OPERATION FUNCTIONS
-# ============================================================================
-
 def add_student(student_data: Dict) -> bool:
-    """
-    Add a new student record to the system.
-    
-    Args:
-        student_data: Dictionary containing student information
-        
-    Returns:
-        True if successful, False otherwise
-    """
     students = load_students()
     
-    # Validate data
     is_valid, errors = validate_student_data(student_data, students)
     if not is_valid:
         for error in errors:
             st.error(f"❌ {error}")
         return False
     
-    # Add student
     students.append(student_data)
     
-    # Save to file
     if save_students(students):
         return True
     return False
 
-
 def update_student(student_id: int, new_data: Dict) -> bool:
-    """
-    Update an existing student's record.
-    
-    Args:
-        student_id: ID of the student to update
-        new_data: Dictionary containing updated student information
-        
-    Returns:
-        True if successful, False otherwise
-    """
     students = load_students()
     
-    # Find student index
     student_index = None
     for i, student in enumerate(students):
         if student['id'] == student_id:
@@ -297,35 +340,21 @@ def update_student(student_id: int, new_data: Dict) -> bool:
         st.error(f"Student with ID {student_id} not found")
         return False
     
-    # Validate new data (allow keeping same ID)
     is_valid, errors = validate_student_data(new_data, students, updating_id=student_id)
     if not is_valid:
         for error in errors:
             st.error(f"❌ {error}")
         return False
     
-    # Update student
     students[student_index] = new_data
     
-    # Save to file
     if save_students(students):
         return True
     return False
 
-
 def delete_student(student_id: int) -> bool:
-    """
-    Delete a student record from the system.
-    
-    Args:
-        student_id: ID of the student to delete
-        
-    Returns:
-        True if successful, False otherwise
-    """
     students = load_students()
     
-    # Filter out the student to delete
     original_count = len(students)
     students = [s for s in students if s['id'] != student_id]
     
@@ -333,22 +362,11 @@ def delete_student(student_id: int) -> bool:
         st.error(f"Student with ID {student_id} not found")
         return False
     
-    # Save to file
     if save_students(students):
         return True
     return False
 
-
 def get_student_by_id(student_id: int) -> Optional[Dict]:
-    """
-    Retrieve a student record by ID.
-    
-    Args:
-        student_id: ID of the student to find
-        
-    Returns:
-        Student dictionary if found, None otherwise
-    """
     students = load_students()
     
     for student in students:
@@ -357,17 +375,7 @@ def get_student_by_id(student_id: int) -> Optional[Dict]:
     
     return None
 
-
 def is_id_unique(student_id: int) -> bool:
-    """
-    Check if a student ID is unique.
-    
-    Args:
-        student_id: The ID to check
-        
-    Returns:
-        True if unique, False otherwise
-    """
     students = load_students()
     
     for student in students:
@@ -376,17 +384,7 @@ def is_id_unique(student_id: int) -> bool:
     
     return True
 
-
 def search_students(query: str) -> List[Dict]:
-    """
-    Search for students by ID or name (case-insensitive).
-    
-    Args:
-        query: Search query string
-        
-    Returns:
-        List of matching student dictionaries
-    """
     if not query:
         return load_students()
     
@@ -395,30 +393,88 @@ def search_students(query: str) -> List[Dict]:
     
     results = []
     for student in students:
-        # Search by ID (exact match)
         if str(student['id']) == query_lower:
             results.append(student)
-        # Search by name (partial match)
         elif query_lower in student['name'].lower():
             results.append(student)
     
     return results
 
+def ai_predict_grade(marks: int) -> str:
+    if marks >= 90:
+        return "A+"
+    elif marks >= 85:
+        return "A"
+    elif marks >= 80:
+        return "B+"
+    elif marks >= 70:
+        return "B"
+    elif marks >= 60:
+        return "C+"
+    elif marks >= 50:
+        return "C"
+    elif marks >= 40:
+        return "D"
+    else:
+        return "F"
 
-# ============================================================================
-# IV. DATA ANALYSIS FUNCTIONS
-# ============================================================================
+def ai_performance_prediction(student: Dict) -> Dict:
+    current_marks = student['marks']
+    age = student['age']
+    
+    potential_improvement = 0
+    if current_marks < 50:
+        potential_improvement = np.random.randint(10, 20)
+    elif current_marks < 70:
+        potential_improvement = np.random.randint(5, 15)
+    else:
+        potential_improvement = np.random.randint(2, 10)
+    
+    predicted_marks = min(100, current_marks + potential_improvement)
+    
+    risk_level = "Low"
+    if current_marks < 40:
+        risk_level = "High"
+    elif current_marks < 60:
+        risk_level = "Medium"
+    
+    return {
+        'current_marks': current_marks,
+        'predicted_marks': predicted_marks,
+        'improvement_potential': potential_improvement,
+        'risk_level': risk_level,
+        'recommended_action': ai_get_recommendation(current_marks, risk_level)
+    }
+
+def ai_get_recommendation(marks: int, risk_level: str) -> str:
+    if risk_level == "High":
+        return "🚨 Immediate intervention required. Schedule one-on-one tutoring sessions."
+    elif risk_level == "Medium":
+        return "⚠️ Monitor closely. Provide additional study materials and support."
+    else:
+        return "✅ Performing well. Encourage to maintain current study habits."
+
+def ai_detect_anomalies(students: List[Dict]) -> List[Dict]:
+    if len(students) < 3:
+        return []
+    
+    marks_list = [s['marks'] for s in students]
+    mean_marks = np.mean(marks_list)
+    std_marks = np.std(marks_list)
+    
+    anomalies = []
+    for student in students:
+        z_score = abs((student['marks'] - mean_marks) / std_marks) if std_marks > 0 else 0
+        if z_score > 2:
+            anomalies.append({
+                'student': student,
+                'z_score': z_score,
+                'type': 'Exceptional' if student['marks'] > mean_marks else 'Needs Attention'
+            })
+    
+    return anomalies
 
 def analyze_data(students: List[Dict]) -> Dict:
-    """
-    Perform comprehensive data analysis on student records.
-    
-    Args:
-        students: List of student dictionaries
-        
-    Returns:
-        Dictionary containing analysis results
-    """
     if not students:
         return {
             'total_students': 0,
@@ -434,26 +490,23 @@ def analyze_data(students: List[Dict]) -> Dict:
             'age_distribution': {},
             'average_marks_per_grade': {},
             'pass_rate': 0,
-            'top_5_students': []
+            'top_5_students': [],
+            'excellence_rate': 0,
+            'median_marks': 0
         }
     
-    # Calculate average marks
     total_marks = sum(s['marks'] for s in students)
     average_marks = total_marks / len(students)
     
-    # Find top and lowest performers
     top_student = max(students, key=lambda s: s['marks'])
     lowest_student = min(students, key=lambda s: s['marks'])
     
-    # Count students below average
     below_average_count = sum(1 for s in students if s['marks'] < average_marks)
     
-    # Grade distribution
     grade_distribution = {}
     for grade in VALID_GRADES:
         grade_distribution[grade] = sum(1 for s in students if s['grade'] == grade)
     
-    # Age distribution (group by age ranges)
     age_distribution = {
         '5-10': 0,
         '11-15': 0,
@@ -475,7 +528,6 @@ def analyze_data(students: List[Dict]) -> Dict:
         elif 26 <= age <= 30:
             age_distribution['26-30'] += 1
     
-    # Average marks per grade
     average_marks_per_grade = {}
     for grade in VALID_GRADES:
         grade_students = [s for s in students if s['grade'] == grade]
@@ -485,11 +537,15 @@ def analyze_data(students: List[Dict]) -> Dict:
         else:
             average_marks_per_grade[grade] = 0
     
-    # Pass rate (assuming 40 is passing marks)
     pass_count = sum(1 for s in students if s['marks'] >= 40)
     pass_rate = (pass_count / len(students)) * 100
     
-    # Top 5 students
+    excellence_count = sum(1 for s in students if s['marks'] >= 85)
+    excellence_rate = (excellence_count / len(students)) * 100
+    
+    marks_sorted = sorted([s['marks'] for s in students])
+    median_marks = marks_sorted[len(marks_sorted)//2]
+    
     top_5_students = sorted(students, key=lambda s: s['marks'], reverse=True)[:5]
     
     return {
@@ -506,40 +562,27 @@ def analyze_data(students: List[Dict]) -> Dict:
         'age_distribution': age_distribution,
         'average_marks_per_grade': average_marks_per_grade,
         'pass_rate': round(pass_rate, 2),
-        'top_5_students': top_5_students
+        'top_5_students': top_5_students,
+        'excellence_rate': round(excellence_rate, 2),
+        'median_marks': median_marks
     }
 
-
-# ============================================================================
-# V. UI HELPER FUNCTIONS
-# ============================================================================
-
 def initialize_session_state():
-    """Initialize Streamlit session state variables."""
     if 'first_load' not in st.session_state:
         st.session_state.first_load = True
     if 'edit_student_id' not in st.session_state:
         st.session_state.edit_student_id = None
-
+    if 'theme' not in st.session_state:
+        st.session_state.theme = 'light'
 
 def show_welcome_popup():
-    """Display welcome popup on first load."""
     if st.session_state.first_load:
         st.balloons()
-        st.toast("🎓 Advanced SMART STUDENT MANAGEMENT SYSTEM - Made By Hafiz Mustafa Murtaza", icon="✨")
+        st.toast("🎓 AI-Powered Student Management System", icon="✨")
+        st.toast("Made By Hafiz Mustafa Murtaza", icon="👨‍💻")
         st.session_state.first_load = False
 
-
 def students_to_dataframe(students: List[Dict]) -> pd.DataFrame:
-    """
-    Convert student list to pandas DataFrame for display.
-    
-    Args:
-        students: List of student dictionaries
-        
-    Returns:
-        Pandas DataFrame
-    """
     if not students:
         return pd.DataFrame(columns=['ID', 'Name', 'Age', 'Grade', 'Marks'])
     
@@ -554,83 +597,141 @@ def students_to_dataframe(students: List[Dict]) -> pd.DataFrame:
     df = df[['ID', 'Name', 'Age', 'Grade', 'Marks']]
     return df
 
-
-# ============================================================================
-# VI. PAGE RENDERING FUNCTIONS
-# ============================================================================
-
 def render_home_page():
-    """Render the Home page."""
-    st.title("🎓 Advanced SMART STUDENT MANAGEMENT SYSTEM")
+    st.markdown('<h1>🎓 AI-Powered Student Management System <span class="ai-badge">AI Enhanced</span></h1>', unsafe_allow_html=True)
     
-    # Show welcome popup
     show_welcome_popup()
     
-    # Welcome message
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     st.markdown("""
-    ### Welcome to the Smart Student Management System
+    ### 🚀 Welcome to the Future of Student Management
     
-    This advanced system provides comprehensive tools for managing student records with powerful analytics.
+    Experience cutting-edge AI technology combined with intuitive design for comprehensive student record management.
     
-    **Key Features:**
-    - ✅ Add, update, and delete student records
-    - 🔍 Advanced search and filtering
-    - 📊 Real-time data analytics and visualizations
-    - ✔️ Robust input validation
-    - 💾 Persistent file-based storage
+    **🌟 Revolutionary Features:**
+    - 🤖 **AI-Powered Predictions** - Smart performance forecasting
+    - 📊 **Advanced Analytics** - Deep insights with interactive visualizations
+    - 🎯 **Anomaly Detection** - Automatic identification of exceptional cases
+    - ⚡ **Real-time Processing** - Instant data updates and validation
+    - 🎨 **Beautiful Interface** - Modern, intuitive design
     """)
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    # System statistics
     students = load_students()
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.info(f"**Total Students**\n\n# {len(students)}")
+        st.metric(
+            "👥 Total Students",
+            len(students),
+            delta=f"+{len(students)} enrolled",
+            delta_color="normal"
+        )
     
     with col2:
         if students:
             avg_marks = sum(s['marks'] for s in students) / len(students)
-            st.info(f"**Average Marks**\n\n# {avg_marks:.1f}")
+            st.metric(
+                "📈 Average Score",
+                f"{avg_marks:.1f}%",
+                delta=f"{avg_marks - 75:.1f}% vs benchmark",
+                delta_color="normal" if avg_marks >= 75 else "inverse"
+            )
         else:
-            st.info(f"**Average Marks**\n\n# 0")
+            st.metric("📈 Average Score", "0%")
     
     with col3:
         if students:
             top_student = max(students, key=lambda s: s['marks'])
-            st.info(f"**Top Score**\n\n# {top_student['marks']}")
+            st.metric(
+                "🏆 Highest Score",
+                f"{top_student['marks']}%",
+                delta=top_student['name'][:15],
+                delta_color="off"
+            )
         else:
-            st.info(f"**Top Score**\n\n# 0")
+            st.metric("🏆 Highest Score", "0%")
     
-    # Quick start guide
+    with col4:
+        if students:
+            pass_count = sum(1 for s in students if s['marks'] >= 40)
+            pass_rate = (pass_count / len(students)) * 100
+            st.metric(
+                "✅ Pass Rate",
+                f"{pass_rate:.1f}%",
+                delta=f"{pass_count}/{len(students)} passing",
+                delta_color="normal"
+            )
+        else:
+            st.metric("✅ Pass Rate", "0%")
+    
+    if students:
+        st.markdown("---")
+        st.markdown("### 🤖 AI-Powered Quick Insights")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            anomalies = ai_detect_anomalies(students)
+            if anomalies:
+                st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+                st.markdown("#### 🎯 Performance Anomalies Detected")
+                for anomaly in anomalies[:3]:
+                    status = "🌟" if anomaly['type'] == 'Exceptional' else "⚠️"
+                    st.markdown(f"{status} **{anomaly['student']['name']}** - {anomaly['type']} ({anomaly['student']['marks']}%)")
+                st.markdown('</div>', unsafe_allow_html=True)
+        
+        with col2:
+            analysis = analyze_data(students)
+            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+            st.markdown("#### 📊 Performance Distribution")
+            fig = go.Figure(data=[go.Pie(
+                labels=['Excellent (≥85)', 'Good (70-84)', 'Average (40-69)', 'Needs Improvement (<40)'],
+                values=[
+                    sum(1 for s in students if s['marks'] >= 85),
+                    sum(1 for s in students if 70 <= s['marks'] < 85),
+                    sum(1 for s in students if 40 <= s['marks'] < 70),
+                    sum(1 for s in students if s['marks'] < 40)
+                ],
+                hole=0.4,
+                marker_colors=['#10b981', '#3b82f6', '#f59e0b', '#ef4444']
+            )])
+            fig.update_layout(height=300, margin=dict(t=0, b=0, l=0, r=0), showlegend=True)
+            st.plotly_chart(fig, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+    
     st.markdown("---")
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     st.markdown("""
-    ### 🚀 Quick Start Guide
+    ### 🎯 Navigation Guide
     
-    1. **Add New Student**: Navigate to the 'Add New Student' page to register students
-    2. **Manage Students**: View, search, update, or delete student records
-    3. **Data Analysis**: Explore comprehensive analytics and visualizations
+    Use the sidebar to access different features:
     
-    Use the sidebar navigation to get started!
+    1. **🏠 Home** - Overview and quick insights
+    2. **➕ Add Student** - Register new students with AI grade prediction
+    3. **📚 Manage Students** - Advanced search, update, and delete operations
+    4. **📊 AI Analytics** - Comprehensive data analysis with ML predictions
+    
+    **Made with ❤️ by Hafiz Mustafa Murtaza**
     """)
-
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def render_add_student_page():
-    """Render the Add New Student page."""
-    st.title("➕ Add New Student")
-    st.markdown("Fill in the form below to add a new student record.")
+    st.markdown('<h1>➕ Add New Student</h1>', unsafe_allow_html=True)
+    
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     
     students = load_students()
     
-    # Create form
     with st.form("add_student_form", clear_on_submit=True):
-        st.subheader("Student Information")
+        st.markdown("### 📝 Student Information")
         
         col1, col2 = st.columns(2)
         
         with col1:
             student_id = st.number_input(
-                "Student ID *",
+                "🆔 Student ID",
                 min_value=1,
                 max_value=999999,
                 step=1,
@@ -638,13 +739,14 @@ def render_add_student_page():
             )
             
             name = st.text_input(
-                "Full Name *",
+                "👤 Full Name",
                 max_chars=100,
+                placeholder="Enter student's full name",
                 help="Student's full name (no numbers allowed)"
             )
             
             age = st.number_input(
-                "Age *",
+                "🎂 Age",
                 min_value=5,
                 max_value=30,
                 value=15,
@@ -653,27 +755,27 @@ def render_add_student_page():
             )
         
         with col2:
-            grade = st.selectbox(
-                "Grade *",
-                options=VALID_GRADES,
-                help="Student's grade (A-F)"
-            )
-            
             marks = st.slider(
-                "Marks *",
+                "📊 Marks",
                 min_value=0,
                 max_value=100,
                 value=50,
                 help="Student's marks (0-100)"
             )
+            
+            predicted_grade = ai_predict_grade(marks)
+            st.markdown(f"### 🤖 AI Predicted Grade: **{predicted_grade}**")
+            
+            grade = st.selectbox(
+                "🎓 Confirm Grade",
+                options=VALID_GRADES,
+                index=VALID_GRADES.index(predicted_grade) if predicted_grade in VALID_GRADES else 0,
+                help="AI suggested grade based on marks"
+            )
         
-        st.markdown("**Required fields are marked with** *")
-        
-        # Submit button
         submitted = st.form_submit_button("✅ Add Student", use_container_width=True, type="primary")
         
         if submitted:
-            # Real-time validation feedback (shown outside form after submission)
             student_data = {
                 'id': student_id,
                 'name': name.strip(),
@@ -682,29 +784,35 @@ def render_add_student_page():
                 'marks': marks
             }
             
-            # Validate and add
             if add_student(student_data):
-                st.success(f"✅ Student **{name}** (ID: {student_id}) added successfully!")
+                st.success(f"✅ Student **{name}** added successfully!")
                 st.balloons()
-            else:
-                st.error("❌ Failed to add student. Please check the errors above and try again.")
+                
+                prediction = ai_performance_prediction(student_data)
+                st.info(f"🤖 AI Insight: {prediction['recommended_action']}")
     
-    # Real-time ID uniqueness check (outside form)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
     st.markdown("---")
-    st.subheader("🔍 Quick ID Check")
-    check_id = st.number_input("Check if ID is available", min_value=1, step=1, key="check_id")
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown("### 🔍 Quick ID Availability Check")
     
-    if check_id:
-        if is_id_unique(check_id):
-            st.success(f"✅ ID {check_id} is available")
-        else:
-            st.warning(f"⚠️ ID {check_id} is already in use")
-
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        check_id = st.number_input("Enter ID to check", min_value=1, step=1, key="check_id")
+    
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if check_id:
+            if is_id_unique(check_id):
+                st.success(f"✅ Available")
+            else:
+                st.error(f"❌ In Use")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def render_manage_students_page():
-    """Render the Manage Students page."""
-    st.title("📚 Manage Students")
-    st.markdown("View, search, update, and delete student records.")
+    st.markdown('<h1>📚 Manage Students</h1>', unsafe_allow_html=True)
     
     students = load_students()
     
@@ -712,42 +820,55 @@ def render_manage_students_page():
         st.info("📭 No students found. Add your first student to get started!")
         return
     
-    # Search/Filter section
-    st.subheader("🔍 Search Students")
-    search_query = st.text_input(
-        "Search by Name or ID",
-        placeholder="Enter student name or ID...",
-        help="Search is case-insensitive"
-    )
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown("### 🔍 Search & Filter")
     
-    # Filter students based on search
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        search_query = st.text_input(
+            "Search by Name or ID",
+            placeholder="🔎 Type to search...",
+            label_visibility="collapsed"
+        )
+    
+    with col2:
+        filter_grade = st.selectbox("Filter by Grade", ["All"] + VALID_GRADES)
+    
     filtered_students = search_students(search_query)
     
-    # Display count
-    if search_query:
-        st.caption(f"Found {len(filtered_students)} student(s) matching '{search_query}'")
+    if filter_grade != "All":
+        filtered_students = [s for s in filtered_students if s['grade'] == filter_grade]
+    
+    if search_query or filter_grade != "All":
+        st.caption(f"📊 Found {len(filtered_students)} student(s)")
     else:
-        st.caption(f"Showing all {len(filtered_students)} student(s)")
+        st.caption(f"📊 Showing all {len(filtered_students)} student(s)")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
     
     if not filtered_students:
-        st.warning("No students match your search criteria.")
+        st.warning("⚠️ No students match your search criteria.")
         return
     
-    # Display students in dataframe
-    st.subheader("📊 Student Records")
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown("### 📊 Student Records")
+    
     df = students_to_dataframe(filtered_students)
-    st.dataframe(df, use_container_width=True, hide_index=True)
     
-    # Edit/Delete section
+    df_styled = df.style.background_gradient(subset=['Marks'], cmap='RdYlGn', vmin=0, vmax=100)
+    st.dataframe(df_styled, use_container_width=True, hide_index=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
     st.markdown("---")
-    st.subheader("✏️ Update or Delete Student")
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown("### ✏️ Update or Delete Student")
     
-    # Create a select box for choosing student to edit/delete
-    student_options = {f"{s['id']} - {s['name']}": s['id'] for s in filtered_students}
+    student_options = {f"ID {s['id']} - {s['name']} ({s['grade']} - {s['marks']}%)": s['id'] for s in filtered_students}
     selected_student_label = st.selectbox(
-        "Select a student to manage",
-        options=list(student_options.keys()),
-        help="Choose a student to update or delete"
+        "Select a student",
+        options=list(student_options.keys())
     )
     
     if selected_student_label:
@@ -755,70 +876,51 @@ def render_manage_students_page():
         selected_student = get_student_by_id(selected_id)
         
         if selected_student:
-            # Display current information in an expander
-            with st.expander("📋 Current Student Information", expanded=True):
+            with st.expander("📋 Current Information", expanded=True):
+                col1, col2, col3, col4, col5 = st.columns(5)
+                with col1:
+                    st.metric("🆔 ID", selected_student['id'])
+                with col2:
+                    st.metric("👤 Name", selected_student['name'])
+                with col3:
+                    st.metric("🎂 Age", selected_student['age'])
+                with col4:
+                    st.metric("🎓 Grade", selected_student['grade'])
+                with col5:
+                    st.metric("📊 Marks", f"{selected_student['marks']}%")
+                
+                st.markdown("---")
+                prediction = ai_performance_prediction(selected_student)
+                
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("ID", selected_student['id'])
-                    st.metric("Age", selected_student['age'])
+                    st.metric("🎯 Predicted Marks", f"{prediction['predicted_marks']}%", 
+                             delta=f"+{prediction['improvement_potential']}%")
                 with col2:
-                    st.metric("Name", selected_student['name'])
-                    st.metric("Grade", selected_student['grade'])
+                    risk_color = {"Low": "🟢", "Medium": "🟡", "High": "🔴"}
+                    st.metric("⚠️ Risk Level", f"{risk_color[prediction['risk_level']]} {prediction['risk_level']}")
                 with col3:
-                    st.metric("Marks", selected_student['marks'])
+                    st.info(f"💡 {prediction['recommended_action']}")
             
-            # Tabs for Update and Delete
-            tab1, tab2 = st.tabs(["✏️ Update", "🗑️ Delete"])
+            tab1, tab2 = st.tabs(["✏️ Update Student", "🗑️ Delete Student"])
             
             with tab1:
-                st.markdown("### Update Student Information")
-                
                 with st.form(f"update_form_{selected_id}"):
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        new_id = st.number_input(
-                            "Student ID",
-                            min_value=1,
-                            value=selected_student['id'],
-                            step=1
-                        )
-                        
-                        new_name = st.text_input(
-                            "Full Name",
-                            value=selected_student['name'],
-                            max_chars=100
-                        )
-                        
-                        new_age = st.number_input(
-                            "Age",
-                            min_value=5,
-                            max_value=30,
-                            value=selected_student['age'],
-                            step=1
-                        )
+                        new_id = st.number_input("Student ID", min_value=1, value=selected_student['id'], step=1)
+                        new_name = st.text_input("Full Name", value=selected_student['name'], max_chars=100)
+                        new_age = st.number_input("Age", min_value=5, max_value=30, value=selected_student['age'], step=1)
                     
                     with col2:
-                        new_grade = st.selectbox(
-                            "Grade",
-                            options=VALID_GRADES,
-                            index=VALID_GRADES.index(selected_student['grade'])
-                        )
-                        
-                        new_marks = st.slider(
-                            "Marks",
-                            min_value=0,
-                            max_value=100,
-                            value=selected_student['marks']
-                        )
+                        new_marks = st.slider("Marks", min_value=0, max_value=100, value=selected_student['marks'])
+                        new_predicted = ai_predict_grade(new_marks)
+                        st.markdown(f"**🤖 AI Predicted: {new_predicted}**")
+                        new_grade = st.selectbox("Grade", options=VALID_GRADES, 
+                                                index=VALID_GRADES.index(selected_student['grade']))
                     
-                    update_submitted = st.form_submit_button(
-                        "💾 Save Changes",
-                        use_container_width=True,
-                        type="primary"
-                    )
-                    
-                    if update_submitted:
+                    if st.form_submit_button("💾 Save Changes", use_container_width=True, type="primary"):
                         new_data = {
                             'id': new_id,
                             'name': new_name.strip(),
@@ -830,267 +932,253 @@ def render_manage_students_page():
                         if update_student(selected_student['id'], new_data):
                             st.success(f"✅ Student **{new_name}** updated successfully!")
                             st.rerun()
-                        else:
-                            st.error("❌ Failed to update student.")
             
             with tab2:
-                st.markdown("### Delete Student Record")
-                st.warning(f"⚠️ You are about to delete **{selected_student['name']}** (ID: {selected_student['id']})")
-                st.markdown("**This action cannot be undone!**")
+                st.warning(f"⚠️ Delete **{selected_student['name']}** (ID: {selected_student['id']})?")
+                st.error("**This action cannot be undone!**")
                 
-                col1, col2, col3 = st.columns([1, 1, 2])
+                col1, col2 = st.columns(2)
                 
                 with col1:
                     if st.button("🗑️ Confirm Delete", type="primary", use_container_width=True):
                         if delete_student(selected_student['id']):
-                            st.success(f"✅ Student **{selected_student['name']}** deleted successfully!")
+                            st.success(f"✅ Student deleted successfully!")
                             st.rerun()
-                        else:
-                            st.error("❌ Failed to delete student.")
                 
                 with col2:
                     if st.button("❌ Cancel", use_container_width=True):
-                        st.info("Delete operation cancelled.")
-
+                        st.info("Cancelled")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def render_analytics_page():
-    """Render the Data Analysis page."""
-    st.title("📊 Data Analysis & Insights")
-    st.markdown("Comprehensive analytics and visualizations of student performance.")
+    st.markdown('<h1>📊 AI-Powered Analytics Dashboard <span class="ai-badge">ML Powered</span></h1>', unsafe_allow_html=True)
     
     students = load_students()
     
     if not students:
-        st.info("📭 No data available for analysis. Add students to see insights!")
+        st.info("📭 No data available. Add students to see AI-powered insights!")
         return
     
-    # Perform analysis
     analysis = analyze_data(students)
     
-    # Key Metrics Section
-    st.subheader("📈 Key Performance Metrics")
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown("### 📈 Key Performance Indicators")
     
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
-        st.metric(
-            "Total Students",
-            analysis['total_students'],
-            help="Total number of registered students"
-        )
+        st.metric("👥 Students", analysis['total_students'])
     
     with col2:
-        st.metric(
-            "Average Marks",
-            f"{analysis['average_marks']}%",
-            help="Average marks across all students"
-        )
+        st.metric("📊 Avg Score", f"{analysis['average_marks']}%")
     
     with col3:
-        st.metric(
-            "Pass Rate",
-            f"{analysis['pass_rate']}%",
-            help="Percentage of students with marks ≥ 40"
-        )
+        st.metric("✅ Pass Rate", f"{analysis['pass_rate']}%")
     
     with col4:
-        st.metric(
-            "Below Average",
-            analysis['below_average_count'],
-            help="Students scoring below average"
-        )
+        st.metric("🌟 Excellence", f"{analysis['excellence_rate']}%")
     
-    st.markdown("---")
+    with col5:
+        st.metric("📈 Median", f"{analysis['median_marks']}%")
     
-    # Top and Bottom Performers
-    st.subheader("🏆 Performance Highlights")
+    st.markdown('</div>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.success(f"**🥇 Top Performer**")
-        st.markdown(f"**{analysis['top_performer']}**")
-        st.markdown(f"Marks: **{analysis['top_performer_marks']}**")
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown("#### 🏆 Top Performer")
+        st.success(f"**{analysis['top_performer']}**")
+        st.markdown(f"Score: **{analysis['top_performer_marks']}%**")
+        st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
-        st.info(f"**📉 Lowest Performer**")
-        st.markdown(f"**{analysis['lowest_performer']}**")
-        st.markdown(f"Marks: **{analysis['lowest_performer_marks']}**")
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown("#### 📉 Needs Support")
+        st.warning(f"**{analysis['lowest_performer']}**")
+        st.markdown(f"Score: **{analysis['lowest_performer_marks']}%**")
+        st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown("---")
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown("### 📊 Interactive Visualizations")
     
-    # Visualizations Section
-    st.subheader("📊 Visual Analytics")
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 Grade Distribution", "🏆 Top Performers", "📈 Age Analysis", "🤖 AI Predictions"])
     
-    # Grade Distribution Chart
-    st.markdown("#### Grade Distribution")
-    grade_df = pd.DataFrame(
-        list(analysis['grade_distribution'].items()),
-        columns=['Grade', 'Count']
-    )
-    st.bar_chart(grade_df.set_index('Grade'))
+    with tab1:
+        fig = px.bar(
+            x=list(analysis['grade_distribution'].keys()),
+            y=list(analysis['grade_distribution'].values()),
+            labels={'x': 'Grade', 'y': 'Number of Students'},
+            title='Grade Distribution',
+            color=list(analysis['grade_distribution'].values()),
+            color_continuous_scale='viridis'
+        )
+        fig.update_layout(height=400, showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        avg_grade_data = {k: v for k, v in analysis['average_marks_per_grade'].items() if v > 0}
+        if avg_grade_data:
+            fig2 = px.line(
+                x=list(avg_grade_data.keys()),
+                y=list(avg_grade_data.values()),
+                labels={'x': 'Grade', 'y': 'Average Marks'},
+                title='Average Marks per Grade',
+                markers=True
+            )
+            fig2.update_layout(height=300)
+            st.plotly_chart(fig2, use_container_width=True)
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        # Top 5 Students Chart
-        st.markdown("#### Top 5 Students by Marks")
+    with tab2:
         if analysis['top_5_students']:
-            top5_df = pd.DataFrame([
-                {'Student': s['name'], 'Marks': s['marks']}
+            top5_data = pd.DataFrame([
+                {'Student': s['name'], 'Marks': s['marks'], 'Grade': s['grade']}
                 for s in analysis['top_5_students']
             ])
-            st.bar_chart(top5_df.set_index('Student'))
-        else:
-            st.info("Not enough data")
-    
-    with col2:
-        # Age Distribution Chart
-        st.markdown("#### Age Distribution")
-        age_df = pd.DataFrame(
-            list(analysis['age_distribution'].items()),
-            columns=['Age Group', 'Count']
-        )
-        # Filter out empty groups
-        age_df = age_df[age_df['Count'] > 0]
-        if not age_df.empty:
-            st.bar_chart(age_df.set_index('Age Group'))
-        else:
-            st.info("Not enough data")
-    
-    st.markdown("---")
-    
-    # Custom Insights
-    st.subheader("💡 Advanced Insights")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("#### Average Marks per Grade")
-        avg_grade_df = pd.DataFrame(
-            list(analysis['average_marks_per_grade'].items()),
-            columns=['Grade', 'Average Marks']
-        )
-        avg_grade_df = avg_grade_df[avg_grade_df['Average Marks'] > 0]
-        
-        if not avg_grade_df.empty:
-            st.dataframe(avg_grade_df, use_container_width=True, hide_index=True)
-        else:
-            st.info("Not enough data")
-    
-    with col2:
-        st.markdown("#### Most Common Age Group")
-        if analysis['age_distribution']:
-            most_common_age = max(
-                analysis['age_distribution'].items(),
-                key=lambda x: x[1]
+            
+            fig = px.bar(
+                top5_data,
+                x='Student',
+                y='Marks',
+                color='Marks',
+                title='Top 5 Students',
+                color_continuous_scale='blues',
+                text='Grade'
             )
-            st.info(f"**Age Group: {most_common_age[0]}**")
-            st.info(f"**Students: {most_common_age[1]}**")
-        else:
-            st.info("Not enough data")
+            fig.update_layout(height=400)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            st.dataframe(top5_data, use_container_width=True, hide_index=True)
     
-    # Detailed Statistics Table
+    with tab3:
+        age_data = {k: v for k, v in analysis['age_distribution'].items() if v > 0}
+        if age_data:
+            fig = px.pie(
+                values=list(age_data.values()),
+                names=list(age_data.keys()),
+                title='Age Distribution',
+                hole=0.4
+            )
+            fig.update_layout(height=400)
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with tab4:
+        st.markdown("#### 🤖 AI Performance Predictions")
+        
+        predictions = []
+        for student in students[:10]:
+            pred = ai_performance_prediction(student)
+            predictions.append({
+                'Student': student['name'],
+                'Current': pred['current_marks'],
+                'Predicted': pred['predicted_marks'],
+                'Improvement': pred['improvement_potential'],
+                'Risk': pred['risk_level']
+            })
+        
+        pred_df = pd.DataFrame(predictions)
+        
+        fig = go.Figure()
+        fig.add_trace(go.Bar(name='Current Marks', x=pred_df['Student'], y=pred_df['Current'], marker_color='lightblue'))
+        fig.add_trace(go.Bar(name='Predicted Marks', x=pred_df['Student'], y=pred_df['Predicted'], marker_color='darkblue'))
+        fig.update_layout(height=400, title='Current vs Predicted Performance', barmode='group')
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.dataframe(pred_df, use_container_width=True, hide_index=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
     st.markdown("---")
-    st.subheader("📋 Detailed Statistics")
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown("### 🎯 AI Anomaly Detection")
+    
+    anomalies = ai_detect_anomalies(students)
+    if anomalies:
+        for anomaly in anomalies:
+            status_color = "success" if anomaly['type'] == 'Exceptional' else "warning"
+            with st.expander(f"{anomaly['student']['name']} - {anomaly['type']}", expanded=True):
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Marks", f"{anomaly['student']['marks']}%")
+                with col2:
+                    st.metric("Z-Score", f"{anomaly['z_score']:.2f}")
+                with col3:
+                    st.metric("Status", anomaly['type'])
+    else:
+        st.info("No significant anomalies detected. All students performing within normal range.")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown("---")
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown("### 📋 Detailed Statistics")
     
     stats_data = {
-        'Metric': [
-            'Total Students',
-            'Average Marks',
-            'Highest Marks',
-            'Lowest Marks',
-            'Pass Rate',
-            'Students Below Average'
-        ],
+        'Metric': ['Total Students', 'Average Marks', 'Median Marks', 'Highest Marks', 
+                   'Lowest Marks', 'Pass Rate', 'Excellence Rate', 'Below Average'],
         'Value': [
             analysis['total_students'],
             f"{analysis['average_marks']}%",
-            analysis['highest_marks'],
-            analysis['lowest_marks'],
+            f"{analysis['median_marks']}%",
+            f"{analysis['highest_marks']}%",
+            f"{analysis['lowest_marks']}%",
             f"{analysis['pass_rate']}%",
+            f"{analysis['excellence_rate']}%",
             analysis['below_average_count']
         ]
     }
     
     stats_df = pd.DataFrame(stats_data)
     st.dataframe(stats_df, use_container_width=True, hide_index=True)
-
-
-# ============================================================================
-# VII. MAIN APPLICATION FUNCTION
-# ============================================================================
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def main():
-    """Main application entry point."""
-    
-    # Page configuration
-    st.set_page_config(
-        page_title="Smart Student Management System",
-        page_icon="🎓",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-    
-    # Initialize session state
+    inject_custom_css()
     initialize_session_state()
     
-    # Custom CSS for better styling
-    st.markdown("""
-        <style>
-        .stMetric {
-            background-color: #f0f2f6;
-            padding: 15px;
-            border-radius: 10px;
-        }
-        .stButton>button {
-            border-radius: 5px;
-        }
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 8px;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    # Sidebar navigation
     with st.sidebar:
-        st.image("https://img.icons8.com/clouds/200/student-center.png", width=150)
-        st.title("Navigation")
+        st.markdown("""
+            <div style='text-align: center; padding: 20px;'>
+                <h1 style='color: white; font-size: 1.5rem;'>🎓 SMS</h1>
+                <p style='color: #a0aec0; font-size: 0.9rem;'>AI-Powered System</p>
+            </div>
+        """, unsafe_allow_html=True)
         
         page = st.radio(
-            "Go to",
-            ["🏠 Home", "➕ Add New Student", "📚 Manage Students", "📊 Data Analysis"],
+            "Navigation",
+            ["🏠 Home", "➕ Add Student", "📚 Manage Students", "📊 AI Analytics"],
             label_visibility="collapsed"
         )
         
         st.markdown("---")
         
-        # Sidebar stats
         students = load_students()
-        st.metric("Total Students", len(students))
+        st.metric("📊 Total Records", len(students))
         
         if students:
             avg = sum(s['marks'] for s in students) / len(students)
-            st.metric("Avg. Marks", f"{avg:.1f}")
+            st.metric("📈 Avg. Score", f"{avg:.1f}%")
         
         st.markdown("---")
-        st.caption("Made By Hafiz Mustafa Murtaza")
-        st.caption("© 2024 Advanced SMS")
+        
+        st.markdown("""
+            <div style='text-align: center; color: white; padding: 20px;'>
+                <p style='font-size: 0.8rem; margin: 5px 0;'>Made with ❤️ by</p>
+                <p style='font-size: 1rem; font-weight: 600; margin: 5px 0;'>Hafiz Mustafa Murtaza</p>
+                <p style='font-size: 0.7rem; color: #a0aec0; margin: 5px 0;'>© 2024 Advanced SMS</p>
+            </div>
+        """, unsafe_allow_html=True)
     
-    # Route to appropriate page
     if page == "🏠 Home":
         render_home_page()
-    elif page == "➕ Add New Student":
+    elif page == "➕ Add Student":
         render_add_student_page()
     elif page == "📚 Manage Students":
         render_manage_students_page()
-    elif page == "📊 Data Analysis":
+    elif page == "📊 AI Analytics":
         render_analytics_page()
-
-
-# ============================================================================
-# APPLICATION ENTRY POINT
-# ============================================================================
 
 if __name__ == "__main__":
     main()
