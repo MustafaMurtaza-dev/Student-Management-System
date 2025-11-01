@@ -1,2 +1,4 @@
-streamlit==1.31.0
-pandas==2.0.3
+Made By Hafiz Mustafa Murtaza
+Student Management System Using Python 
+Frontend: Html,Css,Javascript
+Backend: Python Flask
