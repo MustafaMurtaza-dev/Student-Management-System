@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Student Management System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="connectionBanner" class="connection-banner">
+        <span id="connectionStatus">Checking connection...</span>
+    </div>
+
+    <div class="animated-bg">
+        <div class="gradient-blob blob1"></div>
+        <div class="gradient-blob blob2"></div>
+        <div class="gradient-blob blob3"></div>
+    </div>
+
+    <div id="welcomeModal" class="modal">
+        <div class="modal-content welcome-modal">
+            <div class="modal-header">
+                <div class="icon-wrapper">
+                    <span class="icon-large">🎓</span>
+                </div>
+                <h1>Smart Student Record Analyzer</h1>
+                <p class="subtitle">Advanced Management System</p>
+            </div>
+            <div class="modal-body">
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <span class="feature-icon">📊</span>
+                        <span>Advanced Analytics</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🔍</span>
+                        <span>Smart Search</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📈</span>
+                        <span>Performance Tracking</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📤</span>
+                        <span>CSV Import/Export</span>
+                    </div>
+                </div>
+                <p class="author-credit">Made By Hafiz Mustafa Murtaza</p>
+            </div>
+            <button onclick="closeWelcome()" class="btn btn-primary btn-large glow-effect">
+                Get Started ✨
+            </button>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <div id="loadingSpinner" class="loading-overlay">
+        <div class="spinner-wrapper">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">🎓</span>
+                    <div class="logo-text">
+                        <h1>SMS</h1>
+                        <p>Student Management</p>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="nav-btn active" onclick="showPage('home')" data-page="home">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </button>
+                <button class="nav-btn" onclick="showPage('add')" data-page="add">
+                    <span class="nav-icon">➕</span>
+                    <span class="nav-text">Add Student</span>
+                </button>
+                <button class="nav-btn" onclick="showPage('import')" data-page="import">
+                    <span class="nav-icon">📤</span>
+                    <span class="nav-text">Import CSV Decoding</span>
+                </button>
+                <button class="nav-btn" onclick="showPage('view')" data-page="view">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-text">View All Students</span>
+                </button>
+                <button class="nav-btn" onclick="showPage('search')" data-page="search">
+                    <span class="nav-icon">🔍</span>
+                    <span class="nav-text">Search</span>
+                </button>
+                <button class="nav-btn" onclick="showPage('update')" data-page="update">
+                    <span class="nav-icon">✏️</span>
+                    <span class="nav-text">Update Data</span>
+                </button>
+                <button class="nav-btn" onclick="showPage('delete')" data-page="delete">
+                    <span class="nav-icon">🗑️</span>
+                    <span class="nav-text">Delete</span>
+                </button>
+                <button class="nav-btn" onclick="showPage('analytics')" data-page="analytics">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Analytics</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-stats">
+                <div class="stat-item">
+                    <span class="stat-icon">👥</span>
+                    <div class="stat-content">
+                        <span class="stat-label">Total Students</span>
+                        <span class="stat-value" id="sidebarTotal">0</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">📈</span>
+                    <div class="stat-content">
+                        <span class="stat-label">Average Score</span>
+                        <span class="stat-value" id="sidebarAvg">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="author-info">
+                    <p>Made By</p>
+                    <p class="author-name">Hafiz Mustafa Murtaza</p>
+                    <p class="copyright">© 2025</p>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div id="homePage" class="page active">
+                <div class="page-header">
+                    <h1 class="page-title">
+                        <span class="title-icon">📊</span>
+                        Dashboard Overview
+                    </h1>
+                    <div class="header-actions">
+                        <button onclick="exportCSV()" class="btn btn-secondary">
+                            <span>📥</span> Export CSV
+                        </button>
+                        <button onclick="refreshData()" class="btn btn-secondary">
+                            <span>🔄</span> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div class="metrics-container">
+                    <div class="metric-card card-primary">
+                        <div class="metric-icon">👥</div>
+                        <div class="metric-content">
+                            <span class="metric-label">Total Students</span>
+                            <span class="metric-value" id="totalStudents">0</span>
+                            <span class="metric-change" id="totalChange">+0 enrolled</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-card card-success">
+                        <div class="metric-icon">📈</div>
+                        <div class="metric-content">
+                            <span class="metric-label">Average Score</span>
+                            <span class="metric-value" id="avgScore">0%</span>
+                            <span class="metric-change" id="avgChange">0% vs benchmark</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-card card-warning">
+                        <div class="metric-icon">🏆</div>
+                        <div class="metric-content">
+                            <span class="metric-label">Top Score</span>
+                            <span class="metric-value" id="topScore">0%</span>
+                            <span class="metric-change" id="topName">-</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-card card-info">
+                        <div class="metric-icon">✅</div>
+                        <div class="metric-content">
+                            <span class="metric-label">Pass Rate</span>
+                            <span class="metric-value" id="passRate">0%</span>
+                            <span class="metric-change" id="passCount">0/0 passing</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <h3>📈 Quick Statistics</h3>
+                        <div class="stats-list" id="quickStats"></div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h3>🎓 Grade Distribution</h3>
+                        <canvas id="gradeDistChart"></canvas>
+                    </div>
+
+                    <div class="dashboard-card full-width">
+                        <h3>🌟 Recent Performance</h3>
+                        <div id="recentPerformance"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="addPage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">
+                        <span class="title-icon">➕</span>
+                        Add New Student
+                    </h1>
+                </div>
+
+                <div class="form-container">
+                    <form id="addStudentForm" class="modern-form">
+                        <div class="form-section">
+                            <h3>📋 Student Information</h3>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="studentId">
+                                        <span class="label-icon">🆔</span>
+                                        Student ID
+                                    </label>
+                                    <input type="number" id="studentId" required min="1" placeholder="Enter unique ID">
+                                    <small class="form-hint">Unique identifier (positive integer)</small>
+                                    <div id="idCheckResult" class="validation-msg"></div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="studentName">
+                                        <span class="label-icon">👤</span>
+                                        Full Name
+                                    </label>
+                                    <input type="text" id="studentName" required placeholder="Enter student's full name">
+                                    <small class="form-hint">No numbers allowed</small>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="studentAge">
+                                        <span class="label-icon">🎂</span>
+                                        Age
+                                    </label>
+                                    <input type="number" id="studentAge" required min="5" max="100" value="15">
+                                    <small class="form-hint">Age between 5-100</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="studentGrade">
+                                        <span class="label-icon">🎓</span>
+                                        Grade
+                                    </label>
+                                    <select id="studentGrade" required>
+                                        <option value="">Select Grade</option>
+                                        <option value="A">A - Excellent</option>
+                                        <option value="B">B - Good</option>
+                                        <option value="C">C - Average</option>
+                                        <option value="D">D - Below Average</option>
+                                        <option value="F">F - Fail</option>
+                                    </select>
+                                    <small class="form-hint">Select appropriate grade</small>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="studentMarks">
+                                    <span class="label-icon">📊</span>
+                                    Marks
+                                </label>
+                                <div class="slider-container">
+                                    <input type="range" id="studentMarks" min="0" max="100" value="50" oninput="updateMarksDisplay(this.value)">
+                                    <div class="slider-value">
+                                        <span id="marksDisplay">50</span>
+                                        <span class="marks-unit">/ 100</span>
+                                    </div>
+                                </div>
+                                <small class="form-hint">Use slider to set marks (0-100)</small>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary btn-large glow-effect">
+                                ✅ Add Student
+                            </button>
+                            <button type="reset" class="btn btn-secondary btn-large">
+                                🔄 Reset Form
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="importPage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">
+                        <span class="title-icon">📤</span>
+                        Import Students from CSV
+                    </h1>
+                </div>
+
+                <div class="form-container">
+                    <div class="modern-form">
+                        <div class="form-section">
+                            <h3>📄 CSV File Upload</h3>
+                            <p class="form-note">
+                                Upload a CSV file to import multiple students at once. 
+                                The CSV file must have the following columns: <strong>id, name, age, grade, marks</strong>
+                            </p>
+
+                            <div class="csv-upload-area">
+                                <div class="upload-zone" id="uploadZone">
+                                    <span class="upload-icon">📁</span>
+                                    <h4>Drag & Drop CSV File Here</h4>
+                                    <p>or click to browse</p>
+                                    <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+                                    <button type="button" onclick="document.getElementById('csvFileInput').click()" class="btn btn-secondary">
+                                        Choose File
+                                    </button>
+                                </div>
+
+                                <div id="fileInfo" class="file-info" style="display: none;">
+                                    <div class="file-details">
+                                        <span class="file-icon">📄</span>
+                                        <div class="file-text">
+                                            <strong id="fileName"></strong>
+                                            <small id="fileSize"></small>
+                                        </div>
+                                    </div>
+                                    <button type="button" onclick="clearFile()" class="btn-remove">✕</button>
+                                </div>
+                            </div>
+
+                            <div class="csv-preview" id="csvPreview" style="display: none;">
+                                <h4>Preview</h4>
+                                <div id="csvPreviewContent"></div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" onclick="uploadCSV()" id="uploadBtn" class="btn btn-primary btn-large glow-effect" disabled>
+                                    📤 Import Students
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h3>📋 CSV Format Example</h3>
+                            <div class="csv-example">
+                                <pre>id,name,age,grade,marks
+101,Ali Ahmed,17,A,92
+102,Sana Khan,18,B,76
+103,Ahmed Hassan,16,A,95
+104,Fatima Ali,17,C,52</pre>
+                            </div>
+                            <button type="button" onclick="downloadTemplate()" class="btn btn-secondary">
+                                📥 Download Template
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="viewPage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">
+                        <span class="title-icon">📋</span>
+                        All Students
+                    </h1>
+                    <button onclick="loadStudents()" class="btn btn-secondary">
+                        <span>🔄</span> Refresh
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <span class="table-count" id="studentCount">Total: 0 students</span>
+                    </div>
+                    <div id="studentsTableWrapper"></div>
+                </div>
+            </div>
+
+            <div id="searchPage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">
+                        <span class="title-icon">🔍</span>
+                        Search Students
+                    </h1>
+                </div>
+
+                <div class="search-container">
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Search by ID or Name..." oninput="handleSearch()">
+                        <button class="search-btn" onclick="handleSearch()">
+                            <span>🔍</span> Search
+                        </button>
+                    </div>
+                    <p class="search-hint">💡 Search by exact ID or partial name (case-insensitive)</p>
+                </div>
+
+                <div id="searchResults" class="results-container">
+                    <div class="empty-state">
+                        <span class="empty-icon">🔍</span>
+                        <p>Enter a search query to find students</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="updatePage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">
+                        <span class="title-icon">✏️</span>
+                        Update Student
+                    </h1>
+                </div>
+
+                <div class="form-container">
+                    <div class="form-section">
+                        <h3>🔍 Select Student</h3>
+                        <div class="form-group">
+                            <label for="updateSelectStudent">Choose student to update</label>
+                            <select id="updateSelectStudent" onchange="loadStudentForUpdate()">
+                                <option value="">-- Select a student --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="updateFormContainer" style="display: none;">
+                        <form id="updateStudentForm" class="modern-form">
+                            <div class="form-section">
+                                <h3>📝 Update Information</h3>
+                                <p class="form-note">Leave fields empty to keep current values</p>
+
+                                <div class="current-info" id="currentInfo"></div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="updateId">🆔 New ID</label>
+                                        <input type="number" id="updateId" min="1" placeholder="New ID (or leave empty)">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="updateName">👤 New Name</label>
+                                        <input type="text" id="updateName" placeholder="New name (or leave empty)">
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="updateAge">🎂 New Age</label>
+                                        <input type="number" id="updateAge" min="5" max="100" placeholder="New age (or leave empty)">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="updateGrade">🎓 New Grade</label>
+                                        <select id="updateGrade">
+                                            <option value="">Keep current</option>
+                                            <option value="A">A</option>
+                                            <option value="B">B</option>
+                                            <option value="C">C</option>
+                                            <option value="D">D</option>
+                                            <option value="F">F</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="updateMarks">📊 New Marks</label>
+                                    <input type="number" id="updateMarks" min="0" max="100" placeholder="New marks (or leave empty)">
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary btn-large glow-effect">
+                                    💾 Save Changes
+                                </button>
+                                <button type="button" onclick="cancelUpdate()" class="btn btn-secondary btn-large">
+                                    ❌ Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div id="deletePage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">
+                        <span class="title-icon">🗑️</span>
+                        Delete Student
+                    </h1>
+                </div>
+
+                <div class="form-container">
+                    <div class="form-section">
+                        <h3>🔍 Select Student</h3>
+                        <div class="form-group">
+                            <label for="deleteSelectStudent">Choose student to delete</label>
+                            <select id="deleteSelectStudent" onchange="loadStudentForDelete()">
+                                <option value="">-- Select a student --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="deleteConfirmContainer" style="display: none;">
+                        <div class="danger-zone">
+                            <h3>⚠️ Danger Zone</h3>
+                            <div class="student-info-card" id="deleteStudentInfo"></div>
+                            <p class="warning-text">
+                                <strong>⚠️ Warning:</strong> This action cannot be undone. The student record will be permanently deleted.
+                            </p>
+                            <div class="form-actions">
+                                <button onclick="confirmDelete()" class="btn btn-danger btn-large">
+                                    🗑️ Confirm Delete
+                                </button>
+                                <button onclick="cancelDelete()" class="btn btn-secondary btn-large">
+                                    ❌ Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="analyticsPage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">
+                        <span class="title-icon">📊</span>
+                        Analytics Dashboard
+                    </h1>
+                    <button onclick="loadAnalytics()" class="btn btn-secondary">
+                        <span>🔄</span> Refresh
+                    </button>
+                </div>
+
+                <div class="analytics-container">
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <span class="kpi-icon">👥</span>
+                            <div class="kpi-content">
+                                <span class="kpi-label">Total Students</span>
+                                <span class="kpi-value" id="analyticsTotal">0</span>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-icon">📊</span>
+                            <div class="kpi-content">
+                                <span class="kpi-label">Average Marks</span>
+                                <span class="kpi-value" id="analyticsAvg">0</span>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-icon">✅</span>
+                            <div class="kpi-content">
+                                <span class="kpi-label">Pass Rate</span>
+                                <span class="kpi-value" id="analyticsPass">0%</span>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-icon">🏆</span>
+                            <div class="kpi-content">
+                                <span class="kpi-label">Highest Marks</span>
+                                <span class="kpi-value" id="analyticsHigh">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="analytics-section">
+                        <div class="performer-cards">
+                            <div class="performer-card success-card">
+                                <h4>🏆 Top Performer</h4>
+                                <p class="performer-name" id="topPerformer">-</p>
+                                <p class="performer-score" id="topPerformerMarks">0 marks</p>
+                            </div>
+                            <div class="performer-card danger-card">
+                                <h4>📉 Needs Support</h4>
+                                <p class="below-avg-count" id="belowAvgCount">0 students</p>
+                                <p class="below-avg-text">Below average performance</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <h3>📊 Grade Distribution</h3>
+                            <canvas id="gradeChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3>✅ Pass/Fail Analysis</h3>
+                            <canvas id="passFailChart"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <h3>🌟 Excellence Analysis (90+)</h3>
+                            <div id="excellenceList"></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>👥 Age Group Performance</h3>
+                            <canvas id="ageGroupChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="stats-table-container">
+                        <h3>📋 Detailed Statistics</h3>
+                        <table class="stats-table" id="detailedStatsTable"></table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+        <div id="printModal" class="modal" style="display: none;">
+            <div class="modal-content print-preview-modal">
+                <div class="print-preview-header">
+                    <h2>📄 Print Student Result</h2>
+                    <button onclick="closePrintModal()" class="btn-close">✕</button>
+                </div>
+                <div id="printContent" class="print-content">
+                </div>
+                <div class="print-actions">
+                    <button onclick="printResult()" class="btn btn-primary">
+                        🖨️ Print Result
+                    </button>
+                    <button onclick="closePrintModal()" class="btn btn-secondary">
+                        ❌ Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    <script src="script.js"></script>
+</body>
+</html>
