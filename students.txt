@@ -1,6 +1,5 @@
 52353,Mustafa Murtaza,18,A,92
 10001,Ali Ahmed,17,A,95
-10002,Fatema Khan,16,A,88
 10003,Hassan Raza,19,B,78
 10004,Ayesha Malik,15,A,91
 10005,Ahmed Hassan,18,B,82
@@ -499,3 +498,4 @@
 10500,Ashiq Ahmad,18,A,93
 14124124,Mustafa Murtazaa,15,F,0
 1,Ibrahim,20,B,73
+343463,Global Paints Industries,15,C,31

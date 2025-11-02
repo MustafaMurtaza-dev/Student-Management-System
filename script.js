@@ -3,6 +3,12 @@ const API_BASE_URL = 'http://localhost:5000/api';
 let allStudents = [];
 let currentStudent = null;
 let csvFile = null;
+let chartInstances = {
+    gradeDistChart: null,
+    gradeChart: null,
+    passFailChart: null,
+    ageGroupChart: null
+};
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
@@ -57,6 +63,13 @@ async function checkServerConnection() {
     }
 }
 
+function closeConnectionBanner() {
+    const banner = document.getElementById('connectionBanner');
+    if (banner) {
+        banner.style.display = 'none';
+    }
+}
+
 function setupEventListeners() {
     const addForm = document.getElementById('addStudentForm');
     if (addForm) {
@@ -73,6 +86,11 @@ function setupEventListeners() {
         studentIdInput.addEventListener('input', debounce(checkIdAvailability, 500));
     }
     
+    const studentMarks = document.getElementById('studentMarks');
+    if (studentMarks) {
+        studentMarks.addEventListener('input', (e) => updateMarksDisplay(e.target.value));
+    }
+    
     const csvFileInput = document.getElementById('csvFileInput');
     if (csvFileInput) {
         csvFileInput.addEventListener('change', handleFileSelect);
@@ -84,6 +102,66 @@ function setupEventListeners() {
         uploadZone.addEventListener('dragleave', handleDragLeave);
         uploadZone.addEventListener('drop', handleDrop);
     }
+    
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', debounce(handleSearch, 500));
+    }
+    
+    const updateSelectStudent = document.getElementById('updateSelectStudent');
+    if (updateSelectStudent) {
+        updateSelectStudent.addEventListener('change', loadStudentForUpdate);
+    }
+    
+    const deleteSelectStudent = document.getElementById('deleteSelectStudent');
+    if (deleteSelectStudent) {
+        deleteSelectStudent.addEventListener('change', loadStudentForDelete);
+    }
+    
+    setupNavigationListeners();
+    setupActionButtonListeners();
+}
+
+function setupNavigationListeners() {
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const page = this.getAttribute('data-page');
+            if (page) {
+                showPage(page);
+            }
+        });
+    });
+}
+
+function setupActionButtonListeners() {
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('[data-action]');
+        if (!target) return;
+        
+        const action = target.getAttribute('data-action');
+        
+        const actionMap = {
+            'export-csv': exportCSV,
+            'refresh-data': refreshData,
+            'choose-file': () => document.getElementById('csvFileInput').click(),
+            'clear-file': clearFile,
+            'upload-csv': uploadCSV,
+            'download-template': downloadTemplate,
+            'load-students': loadStudents,
+            'search-students': handleSearch,
+            'cancel-update': cancelUpdate,
+            'confirm-delete': confirmDelete,
+            'cancel-delete': cancelDelete,
+            'load-analytics': loadAnalytics,
+            'print-result': printResult,
+            'close-print-modal': closePrintModal
+        };
+        
+        if (actionMap[action]) {
+            actionMap[action]();
+        }
+    });
 }
 
 function debounce(func, wait) {
@@ -98,16 +176,31 @@ function debounce(func, wait) {
     };
 }
 
+function sanitizeHTML(str) {
+    const temp = document.createElement('div');
+    temp.textContent = str;
+    return temp.innerHTML;
+}
+
 function showLoading() {
-    document.getElementById('loadingSpinner').classList.add('show');
+    const spinner = document.getElementById('loadingSpinner');
+    if (spinner) {
+        spinner.classList.add('show');
+        spinner.setAttribute('aria-hidden', 'false');
+    }
 }
 
 function hideLoading() {
-    document.getElementById('loadingSpinner').classList.remove('show');
+    const spinner = document.getElementById('loadingSpinner');
+    if (spinner) {
+        spinner.classList.remove('show');
+        spinner.setAttribute('aria-hidden', 'true');
+    }
 }
 
 function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
+    if (!container) return;
     
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -121,10 +214,16 @@ function showToast(message, type = 'info') {
     
     const icon = icons[type] || icons.info;
     
-    toast.innerHTML = `
-        <span class="toast-icon">${icon}</span>
-        <span class="toast-message">${message}</span>
-    `;
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'toast-icon';
+    iconSpan.textContent = icon;
+    
+    const messageSpan = document.createElement('span');
+    messageSpan.className = 'toast-message';
+    messageSpan.textContent = message;
+    
+    toast.appendChild(iconSpan);
+    toast.appendChild(messageSpan);
     
     container.appendChild(toast);
     
@@ -139,11 +238,17 @@ function showToast(message, type = 'info') {
 }
 
 function closeWelcome() {
-    document.getElementById('welcomeModal').style.display = 'none';
+    const modal = document.getElementById('welcomeModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
 function showWelcomeModal() {
-    document.getElementById('welcomeModal').style.display = 'flex';
+    const modal = document.getElementById('welcomeModal');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
 }
 
 async function apiRequest(endpoint, method = 'GET', data = null) {
@@ -190,6 +295,7 @@ async function loadStudents() {
     try {
         const result = await apiRequest('/students');
         allStudents = result.students || [];
+        updateSidebarStats();
         return allStudents;
     } catch (error) {
         console.error('Error loading students:', error);
@@ -207,13 +313,20 @@ async function refreshData() {
 }
 
 function updateSidebarStats() {
-    document.getElementById('sidebarTotal').textContent = allStudents.length;
+    const totalEl = document.getElementById('sidebarTotal');
+    const avgEl = document.getElementById('sidebarAvg');
     
-    if (allStudents.length > 0) {
-        const avg = allStudents.reduce((sum, s) => sum + s.marks, 0) / allStudents.length;
-        document.getElementById('sidebarAvg').textContent = avg.toFixed(1) + '%';
-    } else {
-        document.getElementById('sidebarAvg').textContent = '0%';
+    if (totalEl) {
+        totalEl.textContent = allStudents.length;
+    }
+    
+    if (avgEl) {
+        if (allStudents.length > 0) {
+            const avg = allStudents.reduce((sum, s) => sum + s.marks, 0) / allStudents.length;
+            avgEl.textContent = avg.toFixed(1) + '%';
+        } else {
+            avgEl.textContent = '0%';
+        }
     }
 }
 
@@ -223,22 +336,16 @@ function updateCurrentPage() {
     
     const pageId = activePage.id;
     
-    switch(pageId) {
-        case 'homePage':
-            updateDashboard();
-            break;
-        case 'viewPage':
-            displayAllStudents();
-            break;
-        case 'updatePage':
-            populateUpdateSelect();
-            break;
-        case 'deletePage':
-            populateDeleteSelect();
-            break;
-        case 'analyticsPage':
-            loadAnalytics();
-            break;
+    const pageUpdaters = {
+        'homePage': updateDashboard,
+        'viewPage': displayAllStudents,
+        'updatePage': populateUpdateSelect,
+        'deletePage': populateDeleteSelect,
+        'analyticsPage': loadAnalytics
+    };
+    
+    if (pageUpdaters[pageId]) {
+        pageUpdaters[pageId]();
     }
 }
 
@@ -266,17 +373,7 @@ function showPage(pageName) {
 
 async function updateDashboard() {
     if (allStudents.length === 0) {
-        document.getElementById('totalStudents').textContent = '0';
-        document.getElementById('totalChange').textContent = '+0 enrolled';
-        document.getElementById('avgScore').textContent = '0%';
-        document.getElementById('avgChange').textContent = '0% vs benchmark';
-        document.getElementById('topScore').textContent = '0%';
-        document.getElementById('topName').textContent = '-';
-        document.getElementById('passRate').textContent = '0%';
-        document.getElementById('passCount').textContent = '0/0 passing';
-        
-        document.getElementById('quickStats').innerHTML = '<p style="text-align:center;color:#6b7280;">No data available</p>';
-        document.getElementById('recentPerformance').innerHTML = '<p style="text-align:center;color:#6b7280;">No students to display</p>';
+        resetDashboard();
         return;
     }
     
@@ -284,26 +381,9 @@ async function updateDashboard() {
         const response = await apiRequest('/analytics');
         const analytics = response.analytics;
         
-        document.getElementById('totalStudents').textContent = analytics.total_students;
-        document.getElementById('totalChange').textContent = `+${analytics.total_students} enrolled`;
-        
-        document.getElementById('avgScore').textContent = analytics.average_marks + '%';
-        const benchmark = 75;
-        const diff = (analytics.average_marks - benchmark).toFixed(1);
-        document.getElementById('avgChange').textContent = `${diff}% vs benchmark`;
-        
-        if (analytics.top_performer) {
-            document.getElementById('topScore').textContent = analytics.top_performer.marks + '%';
-            document.getElementById('topName').textContent = analytics.top_performer.name.substring(0, 15);
-        }
-        
-        document.getElementById('passRate').textContent = analytics.pass_percentage + '%';
-        document.getElementById('passCount').textContent = `${analytics.pass_count}/${analytics.total_students} passing`;
-        
+        updateDashboardMetrics(analytics);
         updateQuickStats(analytics);
-        
         updateGradeDistChart(analytics.grade_distribution);
-        
         updateRecentPerformance();
         
     } catch (error) {
@@ -311,8 +391,71 @@ async function updateDashboard() {
     }
 }
 
+function resetDashboard() {
+    const elements = {
+        'totalStudents': '0',
+        'totalChange': '+0 enrolled',
+        'avgScore': '0%',
+        'avgChange': '0% vs benchmark',
+        'topScore': '0%',
+        'topName': '-',
+        'passRate': '0%',
+        'passCount': '0/0 passing'
+    };
+    
+    Object.entries(elements).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    });
+    
+    const quickStats = document.getElementById('quickStats');
+    if (quickStats) {
+        quickStats.innerHTML = '<p style="text-align:center;color:#6b7280;">No data available</p>';
+    }
+    
+    const recentPerf = document.getElementById('recentPerformance');
+    if (recentPerf) {
+        recentPerf.innerHTML = '<p style="text-align:center;color:#6b7280;">No students to display</p>';
+    }
+}
+
+function updateDashboardMetrics(analytics) {
+    const metrics = {
+        'totalStudents': analytics.total_students,
+        'totalChange': `+${analytics.total_students} enrolled`,
+        'avgScore': analytics.average_marks + '%',
+        'passRate': analytics.pass_percentage + '%',
+        'passCount': `${analytics.pass_count}/${analytics.total_students} passing`
+    };
+    
+    Object.entries(metrics).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    });
+    
+    const avgChangeEl = document.getElementById('avgChange');
+    if (avgChangeEl) {
+        const benchmark = 75;
+        const diff = (analytics.average_marks - benchmark).toFixed(1);
+        avgChangeEl.textContent = `${diff}% vs benchmark`;
+    }
+    
+    if (analytics.top_performer) {
+        const topScoreEl = document.getElementById('topScore');
+        const topNameEl = document.getElementById('topName');
+        
+        if (topScoreEl) {
+            topScoreEl.textContent = analytics.top_performer.marks + '%';
+        }
+        if (topNameEl) {
+            topNameEl.textContent = sanitizeHTML(analytics.top_performer.name.substring(0, 15));
+        }
+    }
+}
+
 function updateQuickStats(analytics) {
     const container = document.getElementById('quickStats');
+    if (!container) return;
     
     const stats = [
         { label: 'Total Students', value: analytics.total_students, icon: '👥' },
@@ -323,28 +466,40 @@ function updateQuickStats(analytics) {
         { label: 'Below Average', value: analytics.below_average_count, icon: '⚠️' }
     ];
     
-    let html = '';
+    const fragment = document.createDocumentFragment();
     stats.forEach(stat => {
-        html += `
-            <div class="stat-row">
-                <span>${stat.icon} ${stat.label}</span>
-                <strong>${stat.value}</strong>
-            </div>
-        `;
+        const div = document.createElement('div');
+        div.className = 'stat-row';
+        
+        const label = document.createElement('span');
+        label.textContent = `${stat.icon} ${stat.label}`;
+        
+        const value = document.createElement('strong');
+        value.textContent = stat.value;
+        
+        div.appendChild(label);
+        div.appendChild(value);
+        fragment.appendChild(div);
     });
     
-    container.innerHTML = html;
+    container.innerHTML = '';
+    container.appendChild(fragment);
+}
+
+function destroyChart(chartName) {
+    if (chartInstances[chartName]) {
+        chartInstances[chartName].destroy();
+        chartInstances[chartName] = null;
+    }
 }
 
 function updateGradeDistChart(distribution) {
     const ctx = document.getElementById('gradeDistChart');
     if (!ctx) return;
     
-    if (window.gradeDistChartInstance) {
-        window.gradeDistChartInstance.destroy();
-    }
+    destroyChart('gradeDistChart');
     
-    window.gradeDistChartInstance = new Chart(ctx, {
+    chartInstances.gradeDistChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: Object.keys(distribution),
@@ -373,6 +528,7 @@ function updateGradeDistChart(distribution) {
 
 function updateRecentPerformance() {
     const container = document.getElementById('recentPerformance');
+    if (!container) return;
     
     if (allStudents.length === 0) {
         container.innerHTML = '<p class="text-center" style="color:#6b7280;">No students to display</p>';
@@ -383,19 +539,27 @@ function updateRecentPerformance() {
         .sort((a, b) => b.marks - a.marks)
         .slice(0, 5);
     
-    let html = '<div class="stats-list">';
-    topStudents.forEach((student, index) => {
-        const marksColor = getMarksColor(student.marks);
-        html += `
-            <div class="stat-row">
-                <span>${index + 1}. ${student.name} (${student.grade})</span>
-                <strong style="color: ${marksColor}">${student.marks}%</strong>
-            </div>
-        `;
-    });
-    html += '</div>';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'stats-list';
     
-    container.innerHTML = html;
+    topStudents.forEach((student, index) => {
+        const div = document.createElement('div');
+        div.className = 'stat-row';
+        
+        const label = document.createElement('span');
+        label.textContent = `${index + 1}. ${sanitizeHTML(student.name)} (${student.grade})`;
+        
+        const marks = document.createElement('strong');
+        marks.style.color = getMarksColor(student.marks);
+        marks.textContent = `${student.marks}%`;
+        
+        div.appendChild(label);
+        div.appendChild(marks);
+        wrapper.appendChild(div);
+    });
+    
+    container.innerHTML = '';
+    container.appendChild(wrapper);
 }
 
 function getMarksColor(marks) {
@@ -407,20 +571,17 @@ function getMarksColor(marks) {
 }
 
 function updateMarksDisplay(value) {
-    document.getElementById('marksDisplay').textContent = value;
+    const display = document.getElementById('marksDisplay');
+    if (display) {
+        display.textContent = value;
+    }
 }
 
 async function checkIdAvailability() {
     const idInput = document.getElementById('studentId');
     const resultDiv = document.getElementById('idCheckResult');
     
-    if (!idInput || !idInput.value) {
-        if (resultDiv) {
-            resultDiv.textContent = '';
-            resultDiv.className = 'validation-msg';
-        }
-        return;
-    }
+    if (!idInput || !idInput.value || !resultDiv) return;
     
     try {
         const response = await apiRequest(`/check-id/${idInput.value}`);
@@ -454,8 +615,12 @@ async function handleAddStudent(e) {
         showToast(result.message, 'success');
         
         e.target.reset();
-        document.getElementById('marksDisplay').textContent = '50';
-        document.getElementById('idCheckResult').textContent = '';
+        updateMarksDisplay('50');
+        
+        const idCheckResult = document.getElementById('idCheckResult');
+        if (idCheckResult) {
+            idCheckResult.textContent = '';
+        }
         
         await refreshData();
         
@@ -507,15 +672,18 @@ function processFile(file) {
     const fileSize = document.getElementById('fileSize');
     const uploadBtn = document.getElementById('uploadBtn');
     
-    fileName.textContent = file.name;
-    fileSize.textContent = formatFileSize(file.size);
-    fileInfo.style.display = 'flex';
-    uploadBtn.disabled = false;
+    if (fileName) fileName.textContent = sanitizeHTML(file.name);
+    if (fileSize) fileSize.textContent = formatFileSize(file.size);
+    if (fileInfo) fileInfo.style.display = 'flex';
+    if (uploadBtn) uploadBtn.disabled = false;
     
     const reader = new FileReader();
     reader.onload = function(e) {
         const content = e.target.result;
         previewCSV(content);
+    };
+    reader.onerror = function() {
+        showToast('Error reading file', 'error');
     };
     reader.readAsText(file);
 }
@@ -530,43 +698,67 @@ function previewCSV(content) {
     const preview = document.getElementById('csvPreview');
     const previewContent = document.getElementById('csvPreviewContent');
     
+    if (!preview || !previewContent) return;
+    
     const lines = content.split('\n').slice(0, 6);
     
-    let html = '<table class="modern-table"><thead><tr>';
+    const table = document.createElement('table');
+    table.className = 'modern-table';
     
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
     const headers = lines[0].split(',');
-    headers.forEach(header => {
-        html += `<th>${header.trim()}</th>`;
-    });
-    html += '</tr></thead><tbody>';
     
+    headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header.trim();
+        headerRow.appendChild(th);
+    });
+    
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    const tbody = document.createElement('tbody');
     for (let i = 1; i < lines.length && i < 6; i++) {
         if (lines[i].trim()) {
-            html += '<tr>';
+            const row = document.createElement('tr');
             const cols = lines[i].split(',');
             cols.forEach(col => {
-                html += `<td>${col.trim()}</td>`;
+                const td = document.createElement('td');
+                td.textContent = col.trim();
+                row.appendChild(td);
             });
-            html += '</tr>';
+            tbody.appendChild(row);
         }
     }
     
-    html += '</tbody></table>';
+    table.appendChild(tbody);
+    
+    previewContent.innerHTML = '';
+    previewContent.appendChild(table);
     
     if (lines.length > 6) {
-        html += `<p style="text-align:center;margin-top:10px;color:#6b7280;">... and ${lines.length - 6} more rows</p>`;
+        const note = document.createElement('p');
+        note.style.cssText = 'text-align:center;margin-top:10px;color:#6b7280;';
+        note.textContent = `... and ${lines.length - 6} more rows`;
+        previewContent.appendChild(note);
     }
     
-    previewContent.innerHTML = html;
     preview.style.display = 'block';
 }
 
 function clearFile() {
     csvFile = null;
-    document.getElementById('csvFileInput').value = '';
-    document.getElementById('fileInfo').style.display = 'none';
-    document.getElementById('csvPreview').style.display = 'none';
-    document.getElementById('uploadBtn').disabled = true;
+    
+    const csvFileInput = document.getElementById('csvFileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const csvPreview = document.getElementById('csvPreview');
+    const uploadBtn = document.getElementById('uploadBtn');
+    
+    if (csvFileInput) csvFileInput.value = '';
+    if (fileInfo) fileInfo.style.display = 'none';
+    if (csvPreview) csvPreview.style.display = 'none';
+    if (uploadBtn) uploadBtn.disabled = true;
 }
 
 async function uploadCSV() {
@@ -597,6 +789,10 @@ async function uploadCSV() {
         } catch (error) {
             console.error('Error uploading CSV:', error);
         }
+    };
+    
+    reader.onerror = function() {
+        showToast('Error reading file', 'error');
     };
     
     reader.readAsText(csvFile);
@@ -647,47 +843,78 @@ function displayAllStudents() {
     const container = document.getElementById('studentsTableWrapper');
     const countElement = document.getElementById('studentCount');
     
-    countElement.textContent = `Total: ${allStudents.length} students`;
+    if (!container) return;
+    
+    if (countElement) {
+        countElement.textContent = `Total: ${allStudents.length} students`;
+    }
     
     if (allStudents.length === 0) {
         container.innerHTML = '<div class="empty-state"><span class="empty-icon">📭</span><p>No students found. Add your first student!</p></div>';
         return;
     }
     
-    let html = `
-        <table class="modern-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Age</th>
-                    <th>Grade</th>
-                    <th>Marks</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
+    const table = document.createElement('table');
+    table.className = 'modern-table';
     
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['ID', 'Name', 'Age', 'Grade', 'Marks'].forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    const tbody = document.createElement('tbody');
     allStudents.forEach(student => {
-        const marksColor = getMarksColor(student.marks);
-        html += `
-            <tr>
-                <td><strong>${student.id}</strong></td>
-                <td>${student.name}</td>
-                <td>${student.age}</td>
-                <td><span class="grade-badge grade-${student.grade}">${student.grade}</span></td>
-                <td><span class="marks-badge" style="background: ${marksColor}">${student.marks}%</span></td>
-            </tr>
-        `;
+        const row = document.createElement('tr');
+        
+        const idCell = document.createElement('td');
+        const idStrong = document.createElement('strong');
+        idStrong.textContent = student.id;
+        idCell.appendChild(idStrong);
+        row.appendChild(idCell);
+        
+        const nameCell = document.createElement('td');
+        nameCell.textContent = sanitizeHTML(student.name);
+        row.appendChild(nameCell);
+        
+        const ageCell = document.createElement('td');
+        ageCell.textContent = student.age;
+        row.appendChild(ageCell);
+        
+        const gradeCell = document.createElement('td');
+        const gradeBadge = document.createElement('span');
+        gradeBadge.className = `grade-badge grade-${student.grade}`;
+        gradeBadge.textContent = student.grade;
+        gradeCell.appendChild(gradeBadge);
+        row.appendChild(gradeCell);
+        
+        const marksCell = document.createElement('td');
+        const marksBadge = document.createElement('span');
+        marksBadge.className = 'marks-badge';
+        marksBadge.style.background = getMarksColor(student.marks);
+        marksBadge.textContent = `${student.marks}%`;
+        marksCell.appendChild(marksBadge);
+        row.appendChild(marksCell);
+        
+        tbody.appendChild(row);
     });
     
-    html += '</tbody></table>';
-    container.innerHTML = html;
+    table.appendChild(tbody);
+    container.innerHTML = '';
+    container.appendChild(table);
 }
 
 async function handleSearch() {
-    const query = document.getElementById('searchInput').value.trim();
+    const queryInput = document.getElementById('searchInput');
     const resultsContainer = document.getElementById('searchResults');
+    
+    if (!queryInput || !resultsContainer) return;
+    
+    const query = queryInput.value.trim();
     
     if (!query) {
         resultsContainer.innerHTML = '<div class="empty-state"><span class="empty-icon">🔍</span><p>Enter a search query to find students</p></div>';
@@ -698,65 +925,123 @@ async function handleSearch() {
         const response = await apiRequest('/students/search', 'POST', { query });
         const students = response.students;
         
-        if (students.length === 0) {
-            resultsContainer.innerHTML = `<div class="empty-state"><span class="empty-icon">😞</span><p>No students found matching "${query}"</p></div>`;
-            return;
-        }
-        
-        let html = `
-            <div class="table-header">
-                <span class="table-count">Found: ${students.length} student(s)</span>
-            </div>
-            <table class="modern-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Age</th>
-                        <th>Grade</th>
-                        <th>Marks</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-        
-        students.forEach(student => {
-            const marksColor = getMarksColor(student.marks);
-            html += `
-                <tr>
-                    <td><strong>${student.id}</strong></td>
-                    <td>${student.name}</td>
-                    <td>${student.age}</td>
-                    <td><span class="grade-badge grade-${student.grade}">${student.grade}</span></td>
-                    <td><span class="marks-badge" style="background: ${marksColor}">${student.marks}%</span></td>
-                </tr>
-            `;
-        });
-        
-        html += '</tbody></table>';
-        resultsContainer.innerHTML = html;
+        displaySearchResults(students, query);
         
     } catch (error) {
         console.error('Error searching:', error);
     }
 }
 
+function displaySearchResults(students, query) {
+    const resultsContainer = document.getElementById('searchResults');
+    if (!resultsContainer) return;
+    
+    if (students.length === 0) {
+        resultsContainer.innerHTML = `<div class="empty-state"><span class="empty-icon">😞</span><p>No students found matching "${sanitizeHTML(query)}"</p></div>`;
+        return;
+    }
+    
+    const wrapper = document.createElement('div');
+    
+    const header = document.createElement('div');
+    header.className = 'table-header';
+    const count = document.createElement('span');
+    count.className = 'table-count';
+    count.textContent = `Found: ${students.length} student(s)`;
+    header.appendChild(count);
+    wrapper.appendChild(header);
+    
+    const table = document.createElement('table');
+    table.className = 'modern-table';
+    
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['ID', 'Name', 'Age', 'Grade', 'Marks', 'Actions'].forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    const tbody = document.createElement('tbody');
+    students.forEach(student => {
+        const row = document.createElement('tr');
+        
+        const idCell = document.createElement('td');
+        const idStrong = document.createElement('strong');
+        idStrong.textContent = student.id;
+        idCell.appendChild(idStrong);
+        row.appendChild(idCell);
+        
+        const nameCell = document.createElement('td');
+        nameCell.textContent = sanitizeHTML(student.name);
+        row.appendChild(nameCell);
+        
+        const ageCell = document.createElement('td');
+        ageCell.textContent = student.age;
+        row.appendChild(ageCell);
+        
+        const gradeCell = document.createElement('td');
+        const gradeBadge = document.createElement('span');
+        gradeBadge.className = `grade-badge grade-${student.grade}`;
+        gradeBadge.textContent = student.grade;
+        gradeCell.appendChild(gradeBadge);
+        row.appendChild(gradeCell);
+        
+        const marksCell = document.createElement('td');
+        const marksBadge = document.createElement('span');
+        marksBadge.className = 'marks-badge';
+        marksBadge.style.background = getMarksColor(student.marks);
+        marksBadge.textContent = `${student.marks}%`;
+        marksCell.appendChild(marksBadge);
+        row.appendChild(marksCell);
+        
+        const actionsCell = document.createElement('td');
+        const printBtn = document.createElement('button');
+        printBtn.className = 'btn-icon';
+        printBtn.title = 'Print Result';
+        printBtn.textContent = '🖨️';
+        printBtn.addEventListener('click', () => showPrintPreview(student));
+        actionsCell.appendChild(printBtn);
+        row.appendChild(actionsCell);
+        
+        tbody.appendChild(row);
+    });
+    
+    table.appendChild(tbody);
+    wrapper.appendChild(table);
+    
+    resultsContainer.innerHTML = '';
+    resultsContainer.appendChild(wrapper);
+}
+
 function populateUpdateSelect() {
     const select = document.getElementById('updateSelectStudent');
-    select.innerHTML = '<option value="">-- Select a student --</option>';
+    if (!select) return;
+    
+    select.innerHTML = '';
+    
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = '-- Select a student --';
+    select.appendChild(defaultOption);
     
     allStudents.forEach(student => {
         const option = document.createElement('option');
         option.value = student.id;
-        option.textContent = `ID ${student.id} - ${student.name} (${student.grade} - ${student.marks}%)`;
+        option.textContent = `ID ${student.id} - ${sanitizeHTML(student.name)} (${student.grade} - ${student.marks}%)`;
         select.appendChild(option);
     });
 }
 
 function loadStudentForUpdate() {
     const select = document.getElementById('updateSelectStudent');
-    const studentId = parseInt(select.value);
     const container = document.getElementById('updateFormContainer');
+    
+    if (!select || !container) return;
+    
+    const studentId = parseInt(select.value);
     
     if (!studentId) {
         container.style.display = 'none';
@@ -769,37 +1054,48 @@ function loadStudentForUpdate() {
     currentStudent = student;
     
     const currentInfo = document.getElementById('currentInfo');
-    currentInfo.innerHTML = `
-        <h4>📋 Current Information</h4>
-        <div class="info-grid">
-            <div class="info-item">
-                <span class="info-label">ID</span>
-                <span class="info-value">${student.id}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Name</span>
-                <span class="info-value">${student.name}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Age</span>
-                <span class="info-value">${student.age}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Grade</span>
-                <span class="info-value">${student.grade}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Marks</span>
-                <span class="info-value">${student.marks}%</span>
-            </div>
-        </div>
-    `;
+    if (currentInfo) {
+        currentInfo.innerHTML = '';
+        
+        const title = document.createElement('h4');
+        title.textContent = '📋 Current Information';
+        currentInfo.appendChild(title);
+        
+        const grid = document.createElement('div');
+        grid.className = 'info-grid';
+        
+        const fields = [
+            { label: 'ID', value: student.id },
+            { label: 'Name', value: sanitizeHTML(student.name) },
+            { label: 'Age', value: student.age },
+            { label: 'Grade', value: student.grade },
+            { label: 'Marks', value: `${student.marks}%` }
+        ];
+        
+        fields.forEach(field => {
+            const item = document.createElement('div');
+            item.className = 'info-item';
+            
+            const label = document.createElement('span');
+            label.className = 'info-label';
+            label.textContent = field.label;
+            
+            const value = document.createElement('span');
+            value.className = 'info-value';
+            value.textContent = field.value;
+            
+            item.appendChild(label);
+            item.appendChild(value);
+            grid.appendChild(item);
+        });
+        
+        currentInfo.appendChild(grid);
+    }
     
-    document.getElementById('updateId').value = '';
-    document.getElementById('updateName').value = '';
-    document.getElementById('updateAge').value = '';
-    document.getElementById('updateGrade').value = '';
-    document.getElementById('updateMarks').value = '';
+    ['updateId', 'updateName', 'updateAge', 'updateGrade', 'updateMarks'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
     
     container.style.display = 'block';
 }
@@ -812,12 +1108,18 @@ async function handleUpdateStudent(e) {
         return;
     }
     
+    const updateId = document.getElementById('updateId');
+    const updateName = document.getElementById('updateName');
+    const updateAge = document.getElementById('updateAge');
+    const updateGrade = document.getElementById('updateGrade');
+    const updateMarks = document.getElementById('updateMarks');
+    
     const newData = {
-        id: document.getElementById('updateId').value ? parseInt(document.getElementById('updateId').value) : currentStudent.id,
-        name: document.getElementById('updateName').value.trim() || currentStudent.name,
-        age: document.getElementById('updateAge').value ? parseInt(document.getElementById('updateAge').value) : currentStudent.age,
-        grade: document.getElementById('updateGrade').value || currentStudent.grade,
-        marks: document.getElementById('updateMarks').value ? parseInt(document.getElementById('updateMarks').value) : currentStudent.marks
+        id: updateId.value ? parseInt(updateId.value) : currentStudent.id,
+        name: updateName.value.trim() || currentStudent.name,
+        age: updateAge.value ? parseInt(updateAge.value) : currentStudent.age,
+        grade: updateGrade.value || currentStudent.grade,
+        marks: updateMarks.value ? parseInt(updateMarks.value) : currentStudent.marks
     };
     
     try {
@@ -825,8 +1127,11 @@ async function handleUpdateStudent(e) {
         
         showToast(result.message, 'success');
         
-        document.getElementById('updateSelectStudent').value = '';
-        document.getElementById('updateFormContainer').style.display = 'none';
+        const select = document.getElementById('updateSelectStudent');
+        const container = document.getElementById('updateFormContainer');
+        
+        if (select) select.value = '';
+        if (container) container.style.display = 'none';
         currentStudent = null;
         
         await refreshData();
@@ -838,27 +1143,40 @@ async function handleUpdateStudent(e) {
 }
 
 function cancelUpdate() {
-    document.getElementById('updateSelectStudent').value = '';
-    document.getElementById('updateFormContainer').style.display = 'none';
+    const select = document.getElementById('updateSelectStudent');
+    const container = document.getElementById('updateFormContainer');
+    
+    if (select) select.value = '';
+    if (container) container.style.display = 'none';
     currentStudent = null;
 }
 
 function populateDeleteSelect() {
     const select = document.getElementById('deleteSelectStudent');
-    select.innerHTML = '<option value="">-- Select a student --</option>';
+    if (!select) return;
+    
+    select.innerHTML = '';
+    
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = '-- Select a student --';
+    select.appendChild(defaultOption);
     
     allStudents.forEach(student => {
         const option = document.createElement('option');
         option.value = student.id;
-        option.textContent = `ID ${student.id} - ${student.name} (${student.grade} - ${student.marks}%)`;
+        option.textContent = `ID ${student.id} - ${sanitizeHTML(student.name)} (${student.grade} - ${student.marks}%)`;
         select.appendChild(option);
     });
 }
 
 function loadStudentForDelete() {
     const select = document.getElementById('deleteSelectStudent');
-    const studentId = parseInt(select.value);
     const container = document.getElementById('deleteConfirmContainer');
+    
+    if (!select || !container) return;
+    
+    const studentId = parseInt(select.value);
     
     if (!studentId) {
         container.style.display = 'none';
@@ -871,30 +1189,38 @@ function loadStudentForDelete() {
     currentStudent = student;
     
     const infoCard = document.getElementById('deleteStudentInfo');
-    infoCard.innerHTML = `
-        <div class="info-grid">
-            <div class="info-item">
-                <span class="info-label">ID</span>
-                <span class="info-value">${student.id}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Name</span>
-                <span class="info-value">${student.name}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Age</span>
-                <span class="info-value">${student.age}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Grade</span>
-                <span class="info-value">${student.grade}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Marks</span>
-                <span class="info-value">${student.marks}%</span>
-            </div>
-        </div>
-    `;
+    if (infoCard) {
+        const grid = document.createElement('div');
+        grid.className = 'info-grid';
+        
+        const fields = [
+            { label: 'ID', value: student.id },
+            { label: 'Name', value: sanitizeHTML(student.name) },
+            { label: 'Age', value: student.age },
+            { label: 'Grade', value: student.grade },
+            { label: 'Marks', value: `${student.marks}%` }
+        ];
+        
+        fields.forEach(field => {
+            const item = document.createElement('div');
+            item.className = 'info-item';
+            
+            const label = document.createElement('span');
+            label.className = 'info-label';
+            label.textContent = field.label;
+            
+            const value = document.createElement('span');
+            value.className = 'info-value';
+            value.textContent = field.value;
+            
+            item.appendChild(label);
+            item.appendChild(value);
+            grid.appendChild(item);
+        });
+        
+        infoCard.innerHTML = '';
+        infoCard.appendChild(grid);
+    }
     
     container.style.display = 'block';
 }
@@ -910,8 +1236,11 @@ async function confirmDelete() {
         
         showToast(result.message, 'success');
         
-        document.getElementById('deleteSelectStudent').value = '';
-        document.getElementById('deleteConfirmContainer').style.display = 'none';
+        const select = document.getElementById('deleteSelectStudent');
+        const container = document.getElementById('deleteConfirmContainer');
+        
+        if (select) select.value = '';
+        if (container) container.style.display = 'none';
         currentStudent = null;
         
         await refreshData();
@@ -923,8 +1252,11 @@ async function confirmDelete() {
 }
 
 function cancelDelete() {
-    document.getElementById('deleteSelectStudent').value = '';
-    document.getElementById('deleteConfirmContainer').style.display = 'none';
+    const select = document.getElementById('deleteSelectStudent');
+    const container = document.getElementById('deleteConfirmContainer');
+    
+    if (select) select.value = '';
+    if (container) container.style.display = 'none';
     currentStudent = null;
 }
 
@@ -938,22 +1270,10 @@ async function loadAnalytics() {
         const response = await apiRequest('/analytics');
         const analytics = response.analytics;
         
-        document.getElementById('analyticsTotal').textContent = analytics.total_students;
-        document.getElementById('analyticsAvg').textContent = analytics.average_marks;
-        document.getElementById('analyticsPass').textContent = analytics.pass_percentage + '%';
-        document.getElementById('analyticsHigh').textContent = analytics.highest_marks;
-        
-        if (analytics.top_performer) {
-            document.getElementById('topPerformer').textContent = analytics.top_performer.name;
-            document.getElementById('topPerformerMarks').textContent = analytics.top_performer.marks + ' marks';
-        }
-        
-        document.getElementById('belowAvgCount').textContent = analytics.below_average_count + ' students';
-        
+        updateAnalyticsKPIs(analytics);
+        updatePerformerCards(analytics);
         updateAnalyticsCharts(analytics);
-        
         updateExcellenceList(analytics.excellence_students);
-        
         updateDetailedStats(analytics);
         
     } catch (error) {
@@ -962,13 +1282,20 @@ async function loadAnalytics() {
 }
 
 function clearAnalytics() {
-    document.getElementById('analyticsTotal').textContent = '0';
-    document.getElementById('analyticsAvg').textContent = '0';
-    document.getElementById('analyticsPass').textContent = '0%';
-    document.getElementById('analyticsHigh').textContent = '0';
-    document.getElementById('topPerformer').textContent = '-';
-    document.getElementById('topPerformerMarks').textContent = '0 marks';
-    document.getElementById('belowAvgCount').textContent = '0 students';
+    const kpis = {
+        'analyticsTotal': '0',
+        'analyticsAvg': '0',
+        'analyticsPass': '0%',
+        'analyticsHigh': '0',
+        'topPerformer': '-',
+        'topPerformerMarks': '0 marks',
+        'belowAvgCount': '0 students'
+    };
+    
+    Object.entries(kpis).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    });
     
     const excellenceList = document.getElementById('excellenceList');
     if (excellenceList) {
@@ -976,138 +1303,185 @@ function clearAnalytics() {
     }
 }
 
+function updateAnalyticsKPIs(analytics) {
+    const kpis = {
+        'analyticsTotal': analytics.total_students,
+        'analyticsAvg': analytics.average_marks,
+        'analyticsPass': analytics.pass_percentage + '%',
+        'analyticsHigh': analytics.highest_marks
+    };
+    
+    Object.entries(kpis).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    });
+}
+
+function updatePerformerCards(analytics) {
+    if (analytics.top_performer) {
+        const topPerformer = document.getElementById('topPerformer');
+        const topPerformerMarks = document.getElementById('topPerformerMarks');
+        
+        if (topPerformer) {
+            topPerformer.textContent = sanitizeHTML(analytics.top_performer.name);
+        }
+        if (topPerformerMarks) {
+            topPerformerMarks.textContent = analytics.top_performer.marks + ' marks';
+        }
+    }
+    
+    const belowAvgCount = document.getElementById('belowAvgCount');
+    if (belowAvgCount) {
+        belowAvgCount.textContent = analytics.below_average_count + ' students';
+    }
+}
+
 function updateAnalyticsCharts(analytics) {
-    const gradeCtx = document.getElementById('gradeChart');
-    if (gradeCtx) {
-        if (window.gradeChartInstance) {
-            window.gradeChartInstance.destroy();
-        }
-        
-        window.gradeChartInstance = new Chart(gradeCtx, {
-            type: 'bar',
-            data: {
-                labels: Object.keys(analytics.grade_distribution),
-                datasets: [{
-                    label: 'Number of Students',
-                    data: Object.values(analytics.grade_distribution),
-                    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#6b7280']
-                }]
+    updateGradeChart(analytics.grade_distribution);
+    updatePassFailChart(analytics);
+    updateAgeGroupChart(analytics.age_group_performance);
+}
+
+function updateGradeChart(distribution) {
+    const ctx = document.getElementById('gradeChart');
+    if (!ctx) return;
+    
+    destroyChart('gradeChart');
+    
+    chartInstances.gradeChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(distribution),
+            datasets: [{
+                label: 'Number of Students',
+                data: Object.values(distribution),
+                backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#6b7280']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
                     }
                 }
             }
-        });
-    }
-    
-    const passFailCtx = document.getElementById('passFailChart');
-    if (passFailCtx) {
-        if (window.passFailChartInstance) {
-            window.passFailChartInstance.destroy();
         }
-        
-        window.passFailChartInstance = new Chart(passFailCtx, {
-            type: 'pie',
-            data: {
-                labels: ['Passed', 'Failed'],
-                datasets: [{
-                    data: [analytics.pass_count, analytics.fail_count],
-                    backgroundColor: ['#10b981', '#ef4444']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
+    });
+}
+
+function updatePassFailChart(analytics) {
+    const ctx = document.getElementById('passFailChart');
+    if (!ctx) return;
+    
+    destroyChart('passFailChart');
+    
+    chartInstances.passFailChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Passed', 'Failed'],
+            datasets: [{
+                data: [analytics.pass_count, analytics.fail_count],
+                backgroundColor: ['#10b981', '#ef4444']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
                 }
             }
-        });
-    }
+        }
+    });
+}
+
+function updateAgeGroupChart(ageData) {
+    const ctx = document.getElementById('ageGroupChart');
+    if (!ctx) return;
     
-    const ageGroupCtx = document.getElementById('ageGroupChart');
-    if (ageGroupCtx) {
-        if (window.ageGroupChartInstance) {
-            window.ageGroupChartInstance.destroy();
-        }
-        
-        const ageData = analytics.age_group_performance;
-        const ageLabels = Object.keys(ageData).filter(k => ageData[k] > 0);
-        const ageValues = ageLabels.map(k => ageData[k]);
-        
-        if (ageValues.length > 0) {
-            window.ageGroupChartInstance = new Chart(ageGroupCtx, {
-                type: 'line',
-                data: {
-                    labels: ageLabels,
-                    datasets: [{
-                        label: 'Average Marks',
-                        data: ageValues,
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100
-                        }
-                    }
+    destroyChart('ageGroupChart');
+    
+    const ageLabels = Object.keys(ageData).filter(k => ageData[k] > 0);
+    const ageValues = ageLabels.map(k => ageData[k]);
+    
+    if (ageValues.length === 0) return;
+    
+    chartInstances.ageGroupChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ageLabels,
+            datasets: [{
+                label: 'Average Marks',
+                data: ageValues,
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
                 }
-            });
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
         }
-    }
+    });
 }
 
 function updateExcellenceList(excellentStudents) {
     const container = document.getElementById('excellenceList');
+    if (!container) return;
     
     if (excellentStudents.length === 0) {
         container.innerHTML = '<p style="text-align:center;padding:20px;color:#6b7280;">No students with 90+ marks yet</p>';
         return;
     }
     
-    let html = '<div class="stats-list">';
-    excellentStudents.forEach(student => {
-        html += `
-            <div class="stat-row">
-                <span>🌟 ${student.name}</span>
-                <strong style="color: #10b981">${student.marks}%</strong>
-            </div>
-        `;
-    });
-    html += '</div>';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'stats-list';
     
-    container.innerHTML = html;
+    excellentStudents.forEach(student => {
+        const div = document.createElement('div');
+        div.className = 'stat-row';
+        
+        const label = document.createElement('span');
+        label.textContent = `🌟 ${sanitizeHTML(student.name)}`;
+        
+        const marks = document.createElement('strong');
+        marks.style.color = '#10b981';
+        marks.textContent = `${student.marks}%`;
+        
+        div.appendChild(label);
+        div.appendChild(marks);
+        wrapper.appendChild(div);
+    });
+    
+    container.innerHTML = '';
+    container.appendChild(wrapper);
 }
 
 function updateDetailedStats(analytics) {
     const table = document.getElementById('detailedStatsTable');
+    if (!table) return;
     
     const stats = [
         ['Total Students', analytics.total_students],
@@ -1121,100 +1495,42 @@ function updateDetailedStats(analytics) {
         ['Excellence (90+)', analytics.excellence_students.length]
     ];
     
-    let html = `
-        <thead>
-            <tr>
-                <th>Metric</th>
-                <th>Value</th>
-            </tr>
-        </thead>
-        <tbody>
-    `;
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['Metric', 'Value'].forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
     
+    const tbody = document.createElement('tbody');
     stats.forEach(([metric, value]) => {
-        html += `
-            <tr>
-                <td>${metric}</td>
-                <td><strong>${value}</strong></td>
-            </tr>
-        `;
+        const row = document.createElement('tr');
+        
+        const metricCell = document.createElement('td');
+        metricCell.textContent = metric;
+        row.appendChild(metricCell);
+        
+        const valueCell = document.createElement('td');
+        const strong = document.createElement('strong');
+        strong.textContent = value;
+        valueCell.appendChild(strong);
+        row.appendChild(valueCell);
+        
+        tbody.appendChild(row);
     });
     
-    html += '</tbody>';
-    table.innerHTML = html;
-}
-function displaySearchResults(students) {
-    const resultsContainer = document.getElementById('searchResults');
-    const query = document.getElementById('searchInput').value.trim();
-    
-    if (students.length === 0) {
-        resultsContainer.innerHTML = `<div class="empty-state"><span class="empty-icon">😞</span><p>No students found matching "${query}"</p></div>`;
-        return;
-    }
-    
-    let html = `
-        <div class="table-header">
-            <span class="table-count">Found: ${students.length} student(s)</span>
-        </div>
-        <table class="modern-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Age</th>
-                    <th>Grade</th>
-                    <th>Marks</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-    
-    students.forEach(student => {
-        const marksColor = getMarksColor(student.marks);
-        html += `
-            <tr>
-                <td><strong>${student.id}</strong></td>
-                <td>${student.name}</td>
-                <td>${student.age}</td>
-                <td><span class="grade-badge grade-${student.grade}">${student.grade}</span></td>
-                <td><span class="marks-badge" style="background: ${marksColor}">${student.marks}%</span></td>
-                <td>
-                    <button onclick='showPrintPreview(${JSON.stringify(student)})' class="btn-icon" title="Print Result">
-                        🖨️
-                    </button>
-                </td>
-            </tr>
-        `;
-    });
-    
-    html += '</tbody></table>';
-    resultsContainer.innerHTML = html;
-}
-
-async function handleSearch() {
-    const query = document.getElementById('searchInput').value.trim();
-    const resultsContainer = document.getElementById('searchResults');
-    
-    if (!query) {
-        resultsContainer.innerHTML = '<div class="empty-state"><span class="empty-icon">🔍</span><p>Enter a search query to find students</p></div>';
-        return;
-    }
-    
-    try {
-        const response = await apiRequest('/students/search', 'POST', { query });
-        const students = response.students;
-        
-        displaySearchResults(students);
-        
-    } catch (error) {
-        console.error('Error searching:', error);
-    }
+    table.innerHTML = '';
+    table.appendChild(thead);
+    table.appendChild(tbody);
 }
 
 function showPrintPreview(student) {
     const modal = document.getElementById('printModal');
     const printContent = document.getElementById('printContent');
+    
+    if (!modal || !printContent) return;
     
     const currentDate = new Date().toLocaleDateString('en-US', { 
         year: 'numeric', 
@@ -1252,7 +1568,7 @@ function showPrintPreview(student) {
                     </div>
                     <div class="info-row">
                         <span class="info-key">Student Name:</span>
-                        <span class="info-val">${student.name}</span>
+                        <span class="info-val">${sanitizeHTML(student.name)}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-key">Age:</span>
@@ -1391,5 +1707,8 @@ function printResult() {
 }
 
 function closePrintModal() {
-    document.getElementById('printModal').style.display = 'none';
+    const modal = document.getElementById('printModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }

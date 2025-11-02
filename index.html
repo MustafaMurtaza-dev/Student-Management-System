@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Smart Student Management System - Advanced student record management and analytics">
+    <meta name="author" content="Hafiz Mustafa Murtaza">
     <title>Smart Student Management System</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,55 +13,63 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div id="connectionBanner" class="connection-banner">
+    <noscript>
+        <div style="padding: 20px; background: #f44336; color: white; text-align: center;">
+            <h2>⚠️ JavaScript Required</h2>
+            <p>This application requires JavaScript to function. Please enable JavaScript in your browser settings.</p>
+        </div>
+    </noscript>
+
+    <div id="connectionBanner" class="connection-banner" role="alert" aria-live="polite">
         <span id="connectionStatus">Checking connection...</span>
+        <button type="button" class="banner-close" onclick="closeConnectionBanner()" aria-label="Close banner">✕</button>
     </div>
 
-    <div class="animated-bg">
+    <div class="animated-bg" aria-hidden="true">
         <div class="gradient-blob blob1"></div>
         <div class="gradient-blob blob2"></div>
         <div class="gradient-blob blob3"></div>
     </div>
 
-    <div id="welcomeModal" class="modal">
+    <div id="welcomeModal" class="modal" role="dialog" aria-labelledby="welcomeTitle" aria-modal="true">
         <div class="modal-content welcome-modal">
             <div class="modal-header">
-                <div class="icon-wrapper">
+                <div class="icon-wrapper" aria-hidden="true">
                     <span class="icon-large">🎓</span>
                 </div>
-                <h1>Smart Student Record Analyzer</h1>
+                <h1 id="welcomeTitle">Smart Student Record Analyzer</h1>
                 <p class="subtitle">Advanced Management System</p>
             </div>
             <div class="modal-body">
                 <div class="feature-grid">
                     <div class="feature-item">
-                        <span class="feature-icon">📊</span>
+                        <span class="feature-icon" aria-hidden="true">📊</span>
                         <span>Advanced Analytics</span>
                     </div>
                     <div class="feature-item">
-                        <span class="feature-icon">🔍</span>
+                        <span class="feature-icon" aria-hidden="true">🔍</span>
                         <span>Smart Search</span>
                     </div>
                     <div class="feature-item">
-                        <span class="feature-icon">📈</span>
+                        <span class="feature-icon" aria-hidden="true">📈</span>
                         <span>Performance Tracking</span>
                     </div>
                     <div class="feature-item">
-                        <span class="feature-icon">📤</span>
+                        <span class="feature-icon" aria-hidden="true">📤</span>
                         <span>CSV Import/Export</span>
                     </div>
                 </div>
                 <p class="author-credit">Made By Hafiz Mustafa Murtaza</p>
             </div>
-            <button onclick="closeWelcome()" class="btn btn-primary btn-large glow-effect">
+            <button type="button" onclick="closeWelcome()" class="btn btn-primary btn-large glow-effect">
                 Get Started ✨
             </button>
         </div>
     </div>
 
-    <div id="toastContainer" class="toast-container"></div>
+    <div id="toastContainer" class="toast-container" role="status" aria-live="polite"></div>
 
-    <div id="loadingSpinner" class="loading-overlay">
+    <div id="loadingSpinner" class="loading-overlay" role="status" aria-live="polite" aria-hidden="true">
         <div class="spinner-wrapper">
             <div class="spinner"></div>
             <p>Loading...</p>
@@ -67,10 +77,10 @@
     </div>
 
     <div class="app-container">
-        <aside class="sidebar">
+        <aside class="sidebar" role="navigation" aria-label="Main navigation">
             <div class="sidebar-header">
                 <div class="logo">
-                    <span class="logo-icon">🎓</span>
+                    <span class="logo-icon" aria-hidden="true">🎓</span>
                     <div class="logo-text">
                         <h1>SMS</h1>
                         <p>Student Management</p>
@@ -79,50 +89,50 @@
             </div>
 
             <nav class="sidebar-nav">
-                <button class="nav-btn active" onclick="showPage('home')" data-page="home">
-                    <span class="nav-icon">🏠</span>
+                <button type="button" class="nav-btn active" data-page="home" aria-label="Dashboard">
+                    <span class="nav-icon" aria-hidden="true">🏠</span>
                     <span class="nav-text">Dashboard</span>
                 </button>
-                <button class="nav-btn" onclick="showPage('add')" data-page="add">
-                    <span class="nav-icon">➕</span>
+                <button type="button" class="nav-btn" data-page="add" aria-label="Add Student">
+                    <span class="nav-icon" aria-hidden="true">➕</span>
                     <span class="nav-text">Add Student</span>
                 </button>
-                <button class="nav-btn" onclick="showPage('import')" data-page="import">
-                    <span class="nav-icon">📤</span>
-                    <span class="nav-text">Import CSV Decoding</span>
+                <button type="button" class="nav-btn" data-page="import" aria-label="Import CSV">
+                    <span class="nav-icon" aria-hidden="true">📤</span>
+                    <span class="nav-text">Import CSV</span>
                 </button>
-                <button class="nav-btn" onclick="showPage('view')" data-page="view">
-                    <span class="nav-icon">📋</span>
+                <button type="button" class="nav-btn" data-page="view" aria-label="View All Students">
+                    <span class="nav-icon" aria-hidden="true">📋</span>
                     <span class="nav-text">View All Students</span>
                 </button>
-                <button class="nav-btn" onclick="showPage('search')" data-page="search">
-                    <span class="nav-icon">🔍</span>
+                <button type="button" class="nav-btn" data-page="search" aria-label="Search Students">
+                    <span class="nav-icon" aria-hidden="true">🔍</span>
                     <span class="nav-text">Search</span>
                 </button>
-                <button class="nav-btn" onclick="showPage('update')" data-page="update">
-                    <span class="nav-icon">✏️</span>
+                <button type="button" class="nav-btn" data-page="update" aria-label="Update Student Data">
+                    <span class="nav-icon" aria-hidden="true">✏️</span>
                     <span class="nav-text">Update Data</span>
                 </button>
-                <button class="nav-btn" onclick="showPage('delete')" data-page="delete">
-                    <span class="nav-icon">🗑️</span>
+                <button type="button" class="nav-btn" data-page="delete" aria-label="Delete Student">
+                    <span class="nav-icon" aria-hidden="true">🗑️</span>
                     <span class="nav-text">Delete</span>
                 </button>
-                <button class="nav-btn" onclick="showPage('analytics')" data-page="analytics">
-                    <span class="nav-icon">📊</span>
+                <button type="button" class="nav-btn" data-page="analytics" aria-label="Analytics Dashboard">
+                    <span class="nav-icon" aria-hidden="true">📊</span>
                     <span class="nav-text">Analytics</span>
                 </button>
             </nav>
 
             <div class="sidebar-stats">
                 <div class="stat-item">
-                    <span class="stat-icon">👥</span>
+                    <span class="stat-icon" aria-hidden="true">👥</span>
                     <div class="stat-content">
                         <span class="stat-label">Total Students</span>
                         <span class="stat-value" id="sidebarTotal">0</span>
                     </div>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-icon">📈</span>
+                    <span class="stat-icon" aria-hidden="true">📈</span>
                     <div class="stat-content">
                         <span class="stat-label">Average Score</span>
                         <span class="stat-value" id="sidebarAvg">0%</span>
@@ -139,26 +149,26 @@
             </div>
         </aside>
 
-        <main class="main-content">
+        <main class="main-content" role="main">
             <div id="homePage" class="page active">
                 <div class="page-header">
                     <h1 class="page-title">
-                        <span class="title-icon">📊</span>
+                        <span class="title-icon" aria-hidden="true">📊</span>
                         Dashboard Overview
                     </h1>
                     <div class="header-actions">
-                        <button onclick="exportCSV()" class="btn btn-secondary">
-                            <span>📥</span> Export CSV
+                        <button type="button" class="btn btn-secondary" data-action="export-csv" aria-label="Export data to CSV">
+                            <span aria-hidden="true">📥</span> Export CSV
                         </button>
-                        <button onclick="refreshData()" class="btn btn-secondary">
-                            <span>🔄</span> Refresh
+                        <button type="button" class="btn btn-secondary" data-action="refresh-data" aria-label="Refresh dashboard data">
+                            <span aria-hidden="true">🔄</span> Refresh
                         </button>
                     </div>
                 </div>
 
                 <div class="metrics-container">
                     <div class="metric-card card-primary">
-                        <div class="metric-icon">👥</div>
+                        <div class="metric-icon" aria-hidden="true">👥</div>
                         <div class="metric-content">
                             <span class="metric-label">Total Students</span>
                             <span class="metric-value" id="totalStudents">0</span>
@@ -167,7 +177,7 @@
                     </div>
 
                     <div class="metric-card card-success">
-                        <div class="metric-icon">📈</div>
+                        <div class="metric-icon" aria-hidden="true">📈</div>
                         <div class="metric-content">
                             <span class="metric-label">Average Score</span>
                             <span class="metric-value" id="avgScore">0%</span>
@@ -176,7 +186,7 @@
                     </div>
 
                     <div class="metric-card card-warning">
-                        <div class="metric-icon">🏆</div>
+                        <div class="metric-icon" aria-hidden="true">🏆</div>
                         <div class="metric-content">
                             <span class="metric-label">Top Score</span>
                             <span class="metric-value" id="topScore">0%</span>
@@ -185,7 +195,7 @@
                     </div>
 
                     <div class="metric-card card-info">
-                        <div class="metric-icon">✅</div>
+                        <div class="metric-icon" aria-hidden="true">✅</div>
                         <div class="metric-content">
                             <span class="metric-label">Pass Rate</span>
                             <span class="metric-value" id="passRate">0%</span>
@@ -202,7 +212,7 @@
 
                     <div class="dashboard-card">
                         <h3>🎓 Grade Distribution</h3>
-                        <canvas id="gradeDistChart"></canvas>
+                        <canvas id="gradeDistChart" role="img" aria-label="Grade distribution chart"></canvas>
                     </div>
 
                     <div class="dashboard-card full-width">
@@ -215,53 +225,53 @@
             <div id="addPage" class="page">
                 <div class="page-header">
                     <h1 class="page-title">
-                        <span class="title-icon">➕</span>
+                        <span class="title-icon" aria-hidden="true">➕</span>
                         Add New Student
                     </h1>
                 </div>
 
                 <div class="form-container">
-                    <form id="addStudentForm" class="modern-form">
+                    <form id="addStudentForm" class="modern-form" novalidate>
                         <div class="form-section">
                             <h3>📋 Student Information</h3>
                             
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="studentId">
-                                        <span class="label-icon">🆔</span>
+                                        <span class="label-icon" aria-hidden="true">🆔</span>
                                         Student ID
                                     </label>
-                                    <input type="number" id="studentId" required min="1" placeholder="Enter unique ID">
-                                    <small class="form-hint">Unique identifier (positive integer)</small>
-                                    <div id="idCheckResult" class="validation-msg"></div>
+                                    <input type="number" id="studentId" name="studentId" required min="1" placeholder="Enter unique ID" autocomplete="off" aria-describedby="idHint">
+                                    <small id="idHint" class="form-hint">Unique identifier (positive integer)</small>
+                                    <div id="idCheckResult" class="validation-msg" role="alert"></div>
                                 </div>
 
                                 <div class="form-group">
                                     <label for="studentName">
-                                        <span class="label-icon">👤</span>
+                                        <span class="label-icon" aria-hidden="true">👤</span>
                                         Full Name
                                     </label>
-                                    <input type="text" id="studentName" required placeholder="Enter student's full name">
-                                    <small class="form-hint">No numbers allowed</small>
+                                    <input type="text" id="studentName" name="studentName" required placeholder="Enter student's full name" autocomplete="name" aria-describedby="nameHint">
+                                    <small id="nameHint" class="form-hint">No numbers allowed</small>
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="studentAge">
-                                        <span class="label-icon">🎂</span>
+                                        <span class="label-icon" aria-hidden="true">🎂</span>
                                         Age
                                     </label>
-                                    <input type="number" id="studentAge" required min="5" max="100" value="15">
-                                    <small class="form-hint">Age between 5-100</small>
+                                    <input type="number" id="studentAge" name="studentAge" required min="5" max="100" value="15" autocomplete="off" aria-describedby="ageHint">
+                                    <small id="ageHint" class="form-hint">Age between 5-100</small>
                                 </div>
 
                                 <div class="form-group">
                                     <label for="studentGrade">
-                                        <span class="label-icon">🎓</span>
+                                        <span class="label-icon" aria-hidden="true">🎓</span>
                                         Grade
                                     </label>
-                                    <select id="studentGrade" required>
+                                    <select id="studentGrade" name="studentGrade" required aria-describedby="gradeHint">
                                         <option value="">Select Grade</option>
                                         <option value="A">A - Excellent</option>
                                         <option value="B">B - Good</option>
@@ -269,23 +279,23 @@
                                         <option value="D">D - Below Average</option>
                                         <option value="F">F - Fail</option>
                                     </select>
-                                    <small class="form-hint">Select appropriate grade</small>
+                                    <small id="gradeHint" class="form-hint">Select appropriate grade</small>
                                 </div>
                             </div>
 
                             <div class="form-group">
                                 <label for="studentMarks">
-                                    <span class="label-icon">📊</span>
+                                    <span class="label-icon" aria-hidden="true">📊</span>
                                     Marks
                                 </label>
                                 <div class="slider-container">
-                                    <input type="range" id="studentMarks" min="0" max="100" value="50" oninput="updateMarksDisplay(this.value)">
+                                    <input type="range" id="studentMarks" name="studentMarks" min="0" max="100" value="50" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-describedby="marksHint">
                                     <div class="slider-value">
-                                        <span id="marksDisplay">50</span>
+                                        <span id="marksDisplay" aria-live="polite">50</span>
                                         <span class="marks-unit">/ 100</span>
                                     </div>
                                 </div>
-                                <small class="form-hint">Use slider to set marks (0-100)</small>
+                                <small id="marksHint" class="form-hint">Use slider to set marks (0-100)</small>
                             </div>
                         </div>
 
@@ -304,7 +314,7 @@
             <div id="importPage" class="page">
                 <div class="page-header">
                     <h1 class="page-title">
-                        <span class="title-icon">📤</span>
+                        <span class="title-icon" aria-hidden="true">📤</span>
                         Import Students from CSV
                     </h1>
                 </div>
@@ -319,25 +329,25 @@
                             </p>
 
                             <div class="csv-upload-area">
-                                <div class="upload-zone" id="uploadZone">
-                                    <span class="upload-icon">📁</span>
+                                <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="Upload CSV file">
+                                    <span class="upload-icon" aria-hidden="true">📁</span>
                                     <h4>Drag & Drop CSV File Here</h4>
                                     <p>or click to browse</p>
-                                    <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
-                                    <button type="button" onclick="document.getElementById('csvFileInput').click()" class="btn btn-secondary">
+                                    <input type="file" id="csvFileInput" accept=".csv" aria-label="Choose CSV file">
+                                    <button type="button" class="btn btn-secondary" data-action="choose-file">
                                         Choose File
                                     </button>
                                 </div>
 
                                 <div id="fileInfo" class="file-info" style="display: none;">
                                     <div class="file-details">
-                                        <span class="file-icon">📄</span>
+                                        <span class="file-icon" aria-hidden="true">📄</span>
                                         <div class="file-text">
                                             <strong id="fileName"></strong>
                                             <small id="fileSize"></small>
                                         </div>
                                     </div>
-                                    <button type="button" onclick="clearFile()" class="btn-remove">✕</button>
+                                    <button type="button" class="btn-remove" data-action="clear-file" aria-label="Remove file">✕</button>
                                 </div>
                             </div>
 
@@ -347,7 +357,7 @@
                             </div>
 
                             <div class="form-actions">
-                                <button type="button" onclick="uploadCSV()" id="uploadBtn" class="btn btn-primary btn-large glow-effect" disabled>
+                                <button type="button" id="uploadBtn" class="btn btn-primary btn-large glow-effect" disabled data-action="upload-csv" aria-label="Import students from CSV">
                                     📤 Import Students
                                 </button>
                             </div>
@@ -362,7 +372,7 @@
 103,Ahmed Hassan,16,A,95
 104,Fatima Ali,17,C,52</pre>
                             </div>
-                            <button type="button" onclick="downloadTemplate()" class="btn btn-secondary">
+                            <button type="button" class="btn btn-secondary" data-action="download-template" aria-label="Download CSV template">
                                 📥 Download Template
                             </button>
                         </div>
@@ -373,11 +383,11 @@
             <div id="viewPage" class="page">
                 <div class="page-header">
                     <h1 class="page-title">
-                        <span class="title-icon">📋</span>
+                        <span class="title-icon" aria-hidden="true">📋</span>
                         All Students
                     </h1>
-                    <button onclick="loadStudents()" class="btn btn-secondary">
-                        <span>🔄</span> Refresh
+                    <button type="button" class="btn btn-secondary" data-action="load-students" aria-label="Refresh student list">
+                        <span aria-hidden="true">🔄</span> Refresh
                     </button>
                 </div>
 
@@ -385,31 +395,31 @@
                     <div class="table-header">
                         <span class="table-count" id="studentCount">Total: 0 students</span>
                     </div>
-                    <div id="studentsTableWrapper"></div>
+                    <div id="studentsTableWrapper" role="region" aria-live="polite"></div>
                 </div>
             </div>
 
             <div id="searchPage" class="page">
                 <div class="page-header">
                     <h1 class="page-title">
-                        <span class="title-icon">🔍</span>
+                        <span class="title-icon" aria-hidden="true">🔍</span>
                         Search Students
                     </h1>
                 </div>
 
                 <div class="search-container">
                     <div class="search-box">
-                        <input type="text" id="searchInput" placeholder="Search by ID or Name..." oninput="handleSearch()">
-                        <button class="search-btn" onclick="handleSearch()">
-                            <span>🔍</span> Search
+                        <input type="text" id="searchInput" placeholder="Search by ID or Name..." autocomplete="off" aria-label="Search students by ID or name">
+                        <button type="button" class="search-btn" data-action="search-students" aria-label="Execute search">
+                            <span aria-hidden="true">🔍</span> Search
                         </button>
                     </div>
                     <p class="search-hint">💡 Search by exact ID or partial name (case-insensitive)</p>
                 </div>
 
-                <div id="searchResults" class="results-container">
+                <div id="searchResults" class="results-container" role="region" aria-live="polite">
                     <div class="empty-state">
-                        <span class="empty-icon">🔍</span>
+                        <span class="empty-icon" aria-hidden="true">🔍</span>
                         <p>Enter a search query to find students</p>
                     </div>
                 </div>
@@ -418,7 +428,7 @@
             <div id="updatePage" class="page">
                 <div class="page-header">
                     <h1 class="page-title">
-                        <span class="title-icon">✏️</span>
+                        <span class="title-icon" aria-hidden="true">✏️</span>
                         Update Student
                     </h1>
                 </div>
@@ -428,14 +438,14 @@
                         <h3>🔍 Select Student</h3>
                         <div class="form-group">
                             <label for="updateSelectStudent">Choose student to update</label>
-                            <select id="updateSelectStudent" onchange="loadStudentForUpdate()">
+                            <select id="updateSelectStudent" aria-label="Select student to update">
                                 <option value="">-- Select a student --</option>
                             </select>
                         </div>
                     </div>
 
                     <div id="updateFormContainer" style="display: none;">
-                        <form id="updateStudentForm" class="modern-form">
+                        <form id="updateStudentForm" class="modern-form" novalidate>
                             <div class="form-section">
                                 <h3>📝 Update Information</h3>
                                 <p class="form-note">Leave fields empty to keep current values</p>
@@ -445,24 +455,24 @@
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="updateId">🆔 New ID</label>
-                                        <input type="number" id="updateId" min="1" placeholder="New ID (or leave empty)">
+                                        <input type="number" id="updateId" name="updateId" min="1" placeholder="New ID (or leave empty)" autocomplete="off">
                                     </div>
 
                                     <div class="form-group">
                                         <label for="updateName">👤 New Name</label>
-                                        <input type="text" id="updateName" placeholder="New name (or leave empty)">
+                                        <input type="text" id="updateName" name="updateName" placeholder="New name (or leave empty)" autocomplete="name">
                                     </div>
                                 </div>
 
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="updateAge">🎂 New Age</label>
-                                        <input type="number" id="updateAge" min="5" max="100" placeholder="New age (or leave empty)">
+                                        <input type="number" id="updateAge" name="updateAge" min="5" max="100" placeholder="New age (or leave empty)" autocomplete="off">
                                     </div>
 
                                     <div class="form-group">
                                         <label for="updateGrade">🎓 New Grade</label>
-                                        <select id="updateGrade">
+                                        <select id="updateGrade" name="updateGrade">
                                             <option value="">Keep current</option>
                                             <option value="A">A</option>
                                             <option value="B">B</option>
@@ -475,7 +485,7 @@
 
                                 <div class="form-group">
                                     <label for="updateMarks">📊 New Marks</label>
-                                    <input type="number" id="updateMarks" min="0" max="100" placeholder="New marks (or leave empty)">
+                                    <input type="number" id="updateMarks" name="updateMarks" min="0" max="100" placeholder="New marks (or leave empty)" autocomplete="off">
                                 </div>
                             </div>
 
@@ -483,7 +493,7 @@
                                 <button type="submit" class="btn btn-primary btn-large glow-effect">
                                     💾 Save Changes
                                 </button>
-                                <button type="button" onclick="cancelUpdate()" class="btn btn-secondary btn-large">
+                                <button type="button" class="btn btn-secondary btn-large" data-action="cancel-update">
                                     ❌ Cancel
                                 </button>
                             </div>
@@ -495,7 +505,7 @@
             <div id="deletePage" class="page">
                 <div class="page-header">
                     <h1 class="page-title">
-                        <span class="title-icon">🗑️</span>
+                        <span class="title-icon" aria-hidden="true">🗑️</span>
                         Delete Student
                     </h1>
                 </div>
@@ -505,7 +515,7 @@
                         <h3>🔍 Select Student</h3>
                         <div class="form-group">
                             <label for="deleteSelectStudent">Choose student to delete</label>
-                            <select id="deleteSelectStudent" onchange="loadStudentForDelete()">
+                            <select id="deleteSelectStudent" aria-label="Select student to delete">
                                 <option value="">-- Select a student --</option>
                             </select>
                         </div>
@@ -519,10 +529,10 @@
                                 <strong>⚠️ Warning:</strong> This action cannot be undone. The student record will be permanently deleted.
                             </p>
                             <div class="form-actions">
-                                <button onclick="confirmDelete()" class="btn btn-danger btn-large">
+                                <button type="button" class="btn btn-danger btn-large" data-action="confirm-delete">
                                     🗑️ Confirm Delete
                                 </button>
-                                <button onclick="cancelDelete()" class="btn btn-secondary btn-large">
+                                <button type="button" class="btn btn-secondary btn-large" data-action="cancel-delete">
                                     ❌ Cancel
                                 </button>
                             </div>
@@ -534,39 +544,39 @@
             <div id="analyticsPage" class="page">
                 <div class="page-header">
                     <h1 class="page-title">
-                        <span class="title-icon">📊</span>
+                        <span class="title-icon" aria-hidden="true">📊</span>
                         Analytics Dashboard
                     </h1>
-                    <button onclick="loadAnalytics()" class="btn btn-secondary">
-                        <span>🔄</span> Refresh
+                    <button type="button" class="btn btn-secondary" data-action="load-analytics" aria-label="Refresh analytics">
+                        <span aria-hidden="true">🔄</span> Refresh
                     </button>
                 </div>
 
                 <div class="analytics-container">
                     <div class="kpi-grid">
                         <div class="kpi-card">
-                            <span class="kpi-icon">👥</span>
+                            <span class="kpi-icon" aria-hidden="true">👥</span>
                             <div class="kpi-content">
                                 <span class="kpi-label">Total Students</span>
                                 <span class="kpi-value" id="analyticsTotal">0</span>
                             </div>
                         </div>
                         <div class="kpi-card">
-                            <span class="kpi-icon">📊</span>
+                            <span class="kpi-icon" aria-hidden="true">📊</span>
                             <div class="kpi-content">
                                 <span class="kpi-label">Average Marks</span>
                                 <span class="kpi-value" id="analyticsAvg">0</span>
                             </div>
                         </div>
                         <div class="kpi-card">
-                            <span class="kpi-icon">✅</span>
+                            <span class="kpi-icon" aria-hidden="true">✅</span>
                             <div class="kpi-content">
                                 <span class="kpi-label">Pass Rate</span>
                                 <span class="kpi-value" id="analyticsPass">0%</span>
                             </div>
                         </div>
                         <div class="kpi-card">
-                            <span class="kpi-icon">🏆</span>
+                            <span class="kpi-icon" aria-hidden="true">🏆</span>
                             <div class="kpi-content">
                                 <span class="kpi-label">Highest Marks</span>
                                 <span class="kpi-value" id="analyticsHigh">0</span>
@@ -592,11 +602,11 @@
                     <div class="charts-grid">
                         <div class="chart-card">
                             <h3>📊 Grade Distribution</h3>
-                            <canvas id="gradeChart"></canvas>
+                            <canvas id="gradeChart" role="img" aria-label="Grade distribution chart"></canvas>
                         </div>
                         <div class="chart-card">
                             <h3>✅ Pass/Fail Analysis</h3>
-                            <canvas id="passFailChart"></canvas>
+                            <canvas id="passFailChart" role="img" aria-label="Pass fail analysis chart"></canvas>
                         </div>
                         <div class="chart-card">
                             <h3>🌟 Excellence Analysis (90+)</h3>
@@ -604,7 +614,7 @@
                         </div>
                         <div class="chart-card">
                             <h3>👥 Age Group Performance</h3>
-                            <canvas id="ageGroupChart"></canvas>
+                            <canvas id="ageGroupChart" role="img" aria-label="Age group performance chart"></canvas>
                         </div>
                     </div>
 
@@ -615,25 +625,26 @@
                 </div>
             </div>
         </main>
-    </div>
-        <div id="printModal" class="modal" style="display: none;">
+
+        <div id="printModal" class="modal" role="dialog" aria-labelledby="printModalTitle" aria-modal="true" style="display: none;">
             <div class="modal-content print-preview-modal">
                 <div class="print-preview-header">
-                    <h2>📄 Print Student Result</h2>
-                    <button onclick="closePrintModal()" class="btn-close">✕</button>
+                    <h2 id="printModalTitle">📄 Print Student Result</h2>
+                    <button type="button" class="btn-close" data-action="close-print-modal" aria-label="Close print modal">✕</button>
                 </div>
-                <div id="printContent" class="print-content">
-                </div>
+                <div id="printContent" class="print-content"></div>
                 <div class="print-actions">
-                    <button onclick="printResult()" class="btn btn-primary">
+                    <button type="button" class="btn btn-primary" data-action="print-result">
                         🖨️ Print Result
                     </button>
-                    <button onclick="closePrintModal()" class="btn btn-secondary">
+                    <button type="button" class="btn btn-secondary" data-action="close-print-modal">
                         ❌ Cancel
                     </button>
                 </div>
             </div>
         </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
